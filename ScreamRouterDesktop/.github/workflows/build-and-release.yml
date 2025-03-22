@@ -1,0 +1,57 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write  # Needed for creating releases
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0  # Need full history for commit details
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 8.0.x
+    
+    - name: Restore dependencies
+      run: dotnet restore
+    
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+    
+    - name: Get short commit hash
+      id: commit
+      shell: bash
+      run: echo "shortcode=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+    
+    - name: Create release artifacts directory
+      run: mkdir release-artifacts
+    
+    - name: Copy release files
+      run: |
+        Copy-Item bin/Release/net8.0-windows/* -Destination release-artifacts/ -Recurse
+    
+    - name: Create ZIP archive
+      run: |
+        Compress-Archive -Path release-artifacts/* -DestinationPath ScreamRouterDesktop-${{ steps.commit.outputs.shortcode }}.zip
+    
+    - name: Create Release
+      id: create_release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.commit.outputs.shortcode }}
+        name: Release ${{ steps.commit.outputs.shortcode }}
+        files: ScreamRouterDesktop-${{ steps.commit.outputs.shortcode }}.zip
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+        token: ${{ secrets.GITHUB_TOKEN }}

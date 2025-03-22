@@ -180,7 +180,6 @@ namespace ScreamRouterDesktop
                     webInterfaceForm = new WebInterfaceForm(url);
                 }
                 webInterfaceForm.Show();
-                webInterfaceForm.WindowState = FormWindowState.Maximized;
             }
             else
             {

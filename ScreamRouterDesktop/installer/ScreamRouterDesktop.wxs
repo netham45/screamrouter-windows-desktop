@@ -64,15 +64,8 @@
       
       <!-- Show our CustomExitDialog instead of the WixUI's standard ExitDialog -->
       <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="LicenseAgreementDlg" />
-      <Publish Dialog="LicenseAgreementDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" />
-      <Publish Dialog="LicenseAgreementDlg" Control="Next" Event="NewDialog" Value="InstallDirDlg" Condition="LicenseAccepted = &quot;1&quot;" />
-      
-      <!-- This is the key part: replace the standard ExitDialog with our CustomExitDialog -->
-      <Publish Dialog="ExecuteUpgradeDlg" Control="Success" Event="NewDialog" Value="CustomExitDialog" />
-      <Publish Dialog="InstallDirDlg" Control="Back" Event="NewDialog" Value="LicenseAgreementDlg" />
       
       <!-- Ensure our CustomExitDialog shows instead of the standard one -->
-      <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="CloseDialog" />
       <Publish Dialog="ExitDialog" Control="Finish" Event="NewDialog" Value="CustomExitDialog" />
       
       <!-- Explicitly replace the standard successful installation dialog with our custom one -->

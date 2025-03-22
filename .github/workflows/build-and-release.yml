@@ -23,10 +23,10 @@ jobs:
         dotnet-version: 8.0.x
     
     - name: Restore dependencies
-      run: dotnet restore
+      run: dotnet restore ScreamRouterDesktop/ScreamRouterDesktop.csproj
     
     - name: Build
-      run: dotnet build --configuration Release --no-restore
+      run: dotnet build ScreamRouterDesktop/ScreamRouterDesktop.csproj --configuration Release --no-restore
     
     - name: Get short commit hash
       id: commit
@@ -38,7 +38,7 @@ jobs:
     
     - name: Copy release files
       run: |
-        Copy-Item bin/Release/net8.0-windows/* -Destination release-artifacts/ -Recurse
+        Copy-Item ScreamRouterDesktop/bin/Release/net8.0-windows/* -Destination release-artifacts/ -Recurse
     
     - name: Create ZIP archive
       run: |

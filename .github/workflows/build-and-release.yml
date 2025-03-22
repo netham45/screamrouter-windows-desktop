@@ -61,15 +61,21 @@ jobs:
     - name: Build MSI Installer
       working-directory: release-artifacts
       run: |
-        # Update version number in the installer with commit hash
-        $version = "1.0.0.${{ steps.commit.outputs.shortcode }}"
-        (Get-Content -Path installer.wxs) -replace 'Version="1.0.0.0"', "Version=`"$version`"" | Set-Content -Path installer.wxs
+        # Use a WiX-compatible version format (must be numeric only for the 4th part)
+        $buildNumber = 1  # Use a fixed number instead of commit hash
+        (Get-Content -Path installer.wxs) -replace 'Version="1.0.0.0"', "Version=`"1.0.0.$buildNumber`"" | Set-Content -Path installer.wxs
         
         # Build the MSI
         wix build -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext -o ScreamRouterDesktop-${{ steps.commit.outputs.shortcode }}.msi installer.wxs
         
-        # Copy the MSI to the root directory
-        Copy-Item ScreamRouterDesktop-${{ steps.commit.outputs.shortcode }}.msi -Destination ../
+        # Check if MSI was created before trying to copy it
+        if (Test-Path "ScreamRouterDesktop-${{ steps.commit.outputs.shortcode }}.msi") {
+            # Copy the MSI to the root directory
+            Copy-Item "ScreamRouterDesktop-${{ steps.commit.outputs.shortcode }}.msi" -Destination ../
+        } else {
+            echo "::error::MSI file was not created, check build logs"
+            exit 1
+        }
     
     - name: Create Release
       id: create_release

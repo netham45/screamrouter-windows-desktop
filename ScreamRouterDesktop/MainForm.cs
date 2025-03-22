@@ -9,7 +9,7 @@ using System.Text;
 
 namespace ScreamRouterDesktop
 {
-    public partial class Form1 : Form
+    public partial class MainForm : Form
     {
         private NotifyIcon? notifyIcon;
         private TextBox? urlTextBox;
@@ -26,7 +26,7 @@ namespace ScreamRouterDesktop
         const int WM_SHOWWEBINTERFACE = 0x0400 + 1;
         const int WM_SHOWSETTINGS = 0x0400 + 2;
 
-        public Form1()
+        public MainForm()
         {
             InitializeComponent();
             InitializeCustomComponents();

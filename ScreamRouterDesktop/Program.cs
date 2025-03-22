@@ -22,7 +22,7 @@ namespace ScreamRouterDesktop
             {
                 if (createdNew)
                 {
-                    Form1 mainForm = new Form1();
+                    MainForm mainForm = new MainForm();
                     HandleArguments(args, mainForm);
                     Application.Run(mainForm);
                 }
@@ -46,7 +46,7 @@ namespace ScreamRouterDesktop
             }
         }
 
-        private static void HandleArguments(string[] args, Form1 mainForm)
+        private static void HandleArguments(string[] args, MainForm mainForm)
         {
             if (args.Length > 0)
             {

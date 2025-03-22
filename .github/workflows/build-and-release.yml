@@ -39,10 +39,37 @@ jobs:
     - name: Copy release files
       run: |
         Copy-Item ScreamRouterDesktop/bin/Release/net8.0-windows/* -Destination release-artifacts/ -Recurse
-    
+
     - name: Create ZIP archive
       run: |
         Compress-Archive -Path release-artifacts/* -DestinationPath ScreamRouterDesktop-${{ steps.commit.outputs.shortcode }}.zip
+    
+    # Install WiX Toolset for MSI creation
+    - name: Install WiX Toolset
+      run: |
+        dotnet tool install --global wix --version 5.0.0
+        wix extension add WixToolset.UI.wixext/5.0.0 -g
+        wix extension add WixToolset.Util.wixext/5.0.0 -g
+    
+    # Prepare for MSI creation
+    - name: Copy WiX files to release-artifacts
+      run: |
+        Copy-Item ScreamRouterDesktop/installer/ScreamRouterDesktop.wxs -Destination release-artifacts/installer.wxs
+        Copy-Item ScreamRouterDesktop/License.rtf -Destination release-artifacts/
+    
+    # Build MSI
+    - name: Build MSI Installer
+      working-directory: release-artifacts
+      run: |
+        # Update version number in the installer with commit hash
+        $version = "1.0.0.${{ steps.commit.outputs.shortcode }}"
+        (Get-Content -Path installer.wxs) -replace 'Version="1.0.0.0"', "Version=`"$version`"" | Set-Content -Path installer.wxs
+        
+        # Build the MSI
+        wix build -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext -o ScreamRouterDesktop-${{ steps.commit.outputs.shortcode }}.msi installer.wxs
+        
+        # Copy the MSI to the root directory
+        Copy-Item ScreamRouterDesktop-${{ steps.commit.outputs.shortcode }}.msi -Destination ../
     
     - name: Create Release
       id: create_release
@@ -50,7 +77,9 @@ jobs:
       with:
         tag_name: ${{ steps.commit.outputs.shortcode }}
         name: Release ${{ steps.commit.outputs.shortcode }}
-        files: ScreamRouterDesktop-${{ steps.commit.outputs.shortcode }}.zip
+        files: |
+          ScreamRouterDesktop-${{ steps.commit.outputs.shortcode }}.zip
+          ScreamRouterDesktop-${{ steps.commit.outputs.shortcode }}.msi
         draft: false
         prerelease: false
         generate_release_notes: true

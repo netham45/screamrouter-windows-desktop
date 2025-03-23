@@ -108,17 +108,17 @@
     <ComponentGroup Id="AllComponents" Directory="INSTALLFOLDER">
       <!-- Main app executable -->
       <Component Id="MainExecutable" Guid="d4e5f6a5-b9c8-7d7e-6f5a-4b3c2d1e0f1a">
-        <File Id="ScreamRouterDesktopEXE" Source="..\bin\Release\net8.0-windows\ScreamRouterDesktop.exe" KeyPath="yes" />
+        <File Id="ScreamRouterDesktopEXE" Source="ScreamRouterDesktop.exe" KeyPath="yes" />
       </Component>
       
       <!-- App config and DLL files -->
       <Component Id="CoreFilesComponent" Guid="e5f6a5b9-c8d7-8e6f-5a4b-3c2d1e0f1a2b">
-        <File Id="ScreamRouterDesktopDLL" Source="..\bin\Release\net8.0-windows\ScreamRouterDesktop.dll" KeyPath="yes" />
-        <File Id="DepJSON" Source="..\bin\Release\net8.0-windows\ScreamRouterDesktop.deps.json" />
-        <File Id="RuntimeJSON" Source="..\bin\Release\net8.0-windows\ScreamRouterDesktop.runtimeconfig.json" />
-        <File Id="WebView2CoreDLL" Source="..\bin\Release\net8.0-windows\Microsoft.Web.WebView2.Core.dll" />
-        <File Id="WebView2WinFormsDLL" Source="..\bin\Release\net8.0-windows\Microsoft.Web.WebView2.WinForms.dll" />
-        <File Id="WebView2WpfDLL" Source="..\bin\Release\net8.0-windows\Microsoft.Web.WebView2.Wpf.dll" />
+        <File Id="ScreamRouterDesktopDLL" Source="ScreamRouterDesktop.dll" KeyPath="yes" />
+        <File Id="DepJSON" Source="ScreamRouterDesktop.deps.json" />
+        <File Id="RuntimeJSON" Source="ScreamRouterDesktop.runtimeconfig.json" />
+        <File Id="WebView2CoreDLL" Source="Microsoft.Web.WebView2.Core.dll" />
+        <File Id="WebView2WinFormsDLL" Source="Microsoft.Web.WebView2.WinForms.dll" />
+        <File Id="WebView2WpfDLL" Source="Microsoft.Web.WebView2.Wpf.dll" />
       </Component>
     </ComponentGroup>
   </Fragment>
@@ -127,15 +127,15 @@
   <Fragment>
     <!-- Each native DLL properly placed in its own separate directory -->
     <Component Id="WebView2LoaderX86Comp" Directory="WinX86NativeDir" Guid="f5742e9c-3c47-4ba3-8733-9a8d8c9cb4c5">
-      <File Id="WebView2LoaderX86" Source="..\bin\Release\net8.0-windows\runtimes\win-x86\native\WebView2Loader.dll" KeyPath="yes" />
+      <File Id="WebView2LoaderX86" Source="runtimes\win-x86\native\WebView2Loader.dll" KeyPath="yes" />
     </Component>
     
     <Component Id="WebView2LoaderX64Comp" Directory="WinX64NativeDir" Guid="12345678-1234-1234-1234-123456789abc">
-      <File Id="WebView2LoaderX64" Source="..\bin\Release\net8.0-windows\runtimes\win-x64\native\WebView2Loader.dll" KeyPath="yes" />
+      <File Id="WebView2LoaderX64" Source="runtimes\win-x64\native\WebView2Loader.dll" KeyPath="yes" />
     </Component>
     
     <Component Id="WebView2LoaderArm64Comp" Directory="WinArm64NativeDir" Guid="87654321-4321-4321-4321-cba987654321">
-      <File Id="WebView2LoaderArm64" Source="..\bin\Release\net8.0-windows\runtimes\win-arm64\native\WebView2Loader.dll" KeyPath="yes" />
+      <File Id="WebView2LoaderArm64" Source="runtimes\win-arm64\native\WebView2Loader.dll" KeyPath="yes" />
     </Component>
   </Fragment>
   

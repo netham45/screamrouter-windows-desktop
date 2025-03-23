@@ -1,4 +1,4 @@
-﻿namespace ScreamRouterDesktop;
+﻿﻿namespace ScreamRouterDesktop;
 
 partial class MainForm
 {
@@ -29,7 +29,7 @@ partial class MainForm
     private void InitializeComponent()
     {
         this.components = new System.ComponentModel.Container();
-        this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+        this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
         this.ClientSize = new System.Drawing.Size(800, 450);
         this.Text = "MainForm";
     }

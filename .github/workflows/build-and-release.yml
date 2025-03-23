@@ -63,6 +63,8 @@ jobs:
       run: |
         # Use a WiX-compatible version format (must be numeric only for the 4th part)
         $buildNumber = 1  # Use a fixed number instead of commit hash
+        
+        # Update version number
         (Get-Content -Path installer.wxs) -replace 'Version="1.0.0.0"', "Version=`"1.0.0.$buildNumber`"" | Set-Content -Path installer.wxs
         
         # Build the MSI

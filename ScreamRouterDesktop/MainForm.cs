@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Windows.Forms;
 using System.Net;
 using System.Drawing;
@@ -17,6 +18,7 @@ namespace ScreamRouterDesktop
         private Button? saveButton;
         private Button? openWebInterfaceButton;
         private Button? pinToStartButton;
+        private Button? pinToNotificationAreaButton;
         private WebInterfaceForm? webInterfaceForm;
         private GlobalKeyboardHook? globalKeyboardHook;
 
@@ -35,6 +37,26 @@ namespace ScreamRouterDesktop
             SetCurrentProcessExplicitAppUserModelID("ScreamRouterDesktop");
             CreateJumpList();
 
+            // Check if this is the first run and notification area pinning hint should be shown
+            bool pinningHintShown = Registry.GetValue(@"HKEY_CURRENT_USER\Software\ScreamRouterDesktop", "PinningHintShown", "false")?.ToString() == "true";
+            if (!pinningHintShown)
+            {
+                // Show pinning instructions after a short delay to ensure the icon is visible
+                System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer();
+                timer.Interval = 2000; // 2 seconds
+                timer.Tick += (s, e) =>
+                {
+                    if (notifyIcon != null)
+                    {
+                        NotificationAreaPinning.ShowPinInstructions(notifyIcon);
+                        Registry.SetValue(@"HKEY_CURRENT_USER\Software\ScreamRouterDesktop", "PinningHintShown", "true");
+                    }
+                    timer.Stop();
+                    timer.Dispose();
+                };
+                timer.Start();
+            }
+
             // Start the form hidden
             this.WindowState = FormWindowState.Minimized;
             this.ShowInTaskbar = false;
@@ -44,7 +66,11 @@ namespace ScreamRouterDesktop
         private void InitializeCustomComponents()
         {
             this.Text = "ScreamRouter Configuration";
-            this.Size = new Size(400, 300);
+            // Use DPI-aware sizing
+float scaleFactor = this.DeviceDpi / 96f;
+int formWidth = (int)(400 * scaleFactor);
+int formHeight = (int)(300 * scaleFactor);
+this.ClientSize = new Size(formWidth, formHeight);
 
             Label urlLabel = new Label
             {
@@ -93,6 +119,15 @@ namespace ScreamRouterDesktop
             };
             openWebInterfaceButton.Click += OpenWebInterfaceButton_Click;
             this.Controls.Add(openWebInterfaceButton);
+            
+            pinToNotificationAreaButton = new Button
+            {
+                Text = "Pin to Notification Area",
+                Location = new Point(20, 170),
+                Size = new Size(150, 30)
+            };
+            pinToNotificationAreaButton.Click += PinToNotificationAreaButton_Click;
+            this.Controls.Add(pinToNotificationAreaButton);
 
             InitializeNotifyIcon();
         }
@@ -114,6 +149,8 @@ namespace ScreamRouterDesktop
             contextMenu.Items.Add("Play/Pause", null, (sender, e) => { SendMediaCommand("playPause"); });
             contextMenu.Items.Add("Next Track", null, (sender, e) => { SendMediaCommand("nextTrack"); });
             contextMenu.Items.Add("Previous Track", null, (sender, e) => { SendMediaCommand("previousTrack"); });
+            contextMenu.Items.Add("-"); // Separator
+            contextMenu.Items.Add("Pin to Notification Area", null, (sender, e) => { NotificationAreaPinning.ShowPinInstructionsDialog(); });
             contextMenu.Items.Add("-"); // Separator
             contextMenu.Items.Add("Exit", null, (sender, e) => { Application.Exit(); });
 
@@ -206,6 +243,11 @@ namespace ScreamRouterDesktop
         private void PinToStartButton_Click(object? sender, EventArgs e)
         {
             StartMenuPinning.PinToStartMenu();
+        }
+        
+        private void PinToNotificationAreaButton_Click(object? sender, EventArgs e)
+        {
+            NotificationAreaPinning.ShowPinInstructionsDialog();
         }
 
         public void ToggleWebInterface()

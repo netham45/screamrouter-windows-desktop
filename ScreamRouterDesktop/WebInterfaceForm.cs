@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
@@ -48,11 +49,14 @@ namespace ScreamRouterDesktop
             // 
             // WebInterfaceForm
             // 
-            this.ClientSize = new System.Drawing.Size(1010, 610);
+            // Scale according to DPI
+            float dpiScaling = GetScalingFactor();
+            this.ClientSize = new System.Drawing.Size((int)(1010 * dpiScaling), (int)(610 * dpiScaling));
             this.FormBorderStyle = FormBorderStyle.None;
             this.Name = "WebInterfaceForm";
             this.ShowInTaskbar = false;
             this.TopMost = true;
+            //this.AutoScaleMode = AutoScaleMode.None;
             this.ResumeLayout(false);
         }
 
@@ -67,14 +71,16 @@ namespace ScreamRouterDesktop
             {
                 if (!isWebViewInitialized)
                 {
-                    // Create environment with no UI
+                    // Create environment with no UI and use temporary path for user data
                     var options = new CoreWebView2EnvironmentOptions();
                     // Force the WebView2 to use app mode with no browser UI at all
                     options.AdditionalBrowserArguments = "--app"; 
                     
-                    // Create the environment and initialize the WebView2
-                    var env = await CoreWebView2Environment.CreateAsync(null, null, options);
-                    await webView.EnsureCoreWebView2Async(env);
+                    // Create the environment using temp path and initialize the WebView2
+                    string userDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ScreamRouterDesktop", "WebView2");
+                    Directory.CreateDirectory(userDataFolder);
+                    CoreWebView2Environment cwv2Environment = await CoreWebView2Environment.CreateAsync(null, userDataFolder, options);
+                    await webView.EnsureCoreWebView2Async(cwv2Environment);
                     
                     // Completely disable all browser UI elements
                     webView.CoreWebView2.Settings.AreDevToolsEnabled = false;
@@ -104,10 +110,6 @@ namespace ScreamRouterDesktop
                 // Set the WebView2 size to match the form's client size
                 webView.Size = this.ClientSize;
                 
-                // Adjust the zoom factor based on the system DPI scaling
-                float dpiScaling = GetScalingFactor();
-                webView.ZoomFactor = 1 / dpiScaling;
-
                 // Set the background of the WebView2 to be transparent
                 webView.DefaultBackgroundColor = Color.Transparent;
                 
@@ -192,7 +194,8 @@ namespace ScreamRouterDesktop
             {
                 Width = 1920,
                 Height = 1080,
-                StartPosition = FormStartPosition.CenterScreen
+                StartPosition = FormStartPosition.CenterScreen,
+                AutoScaleMode = AutoScaleMode.None
             };
 
             var newWebView = new WebView2
@@ -208,7 +211,10 @@ namespace ScreamRouterDesktop
                 var envOptions = new CoreWebView2EnvironmentOptions();
                 envOptions.AdditionalBrowserArguments = "--app";
                 
-                var env = await CoreWebView2Environment.CreateAsync(null, null, envOptions);
+                // Use temp path for WebView2 data
+                string popupUserDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ScreamRouterDesktop", "WebView2Popups");
+                Directory.CreateDirectory(popupUserDataFolder);
+                var env = await CoreWebView2Environment.CreateAsync(null, popupUserDataFolder, envOptions);
                 await newWebView.EnsureCoreWebView2Async(env);
                 
                 // Disable all browser UI elements
@@ -237,3 +243,4 @@ namespace ScreamRouterDesktop
         }
     }
 }
+

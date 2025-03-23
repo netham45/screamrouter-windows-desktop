@@ -1,13 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
-     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
-     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
-  
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
+  <!-- Main package definition -->
   <Package Name="ScreamRouter Desktop" 
            Manufacturer="ScreamRouter"
            Version="1.0.0.0"
-           UpgradeCode="4f709484-66b1-4429-9d7a-1787c4ff593c">
+           UpgradeCode="4f709484-66b1-4429-9d7a-1787c4ff593c"
+           InstallerVersion="500">
            
+    <!-- This ensures the CAB is embedded in the MSI -->
+    <MediaTemplate EmbedCab="yes" />
+           
+    <!-- Upgrade behavior -->
     <MajorUpgrade DowngradeErrorMessage="A newer version of ScreamRouter Desktop is already installed." />
     
     <!-- Define properties for the checkboxes -->
@@ -16,7 +21,19 @@
     
     <!-- Define install directory structure -->
     <StandardDirectory Id="ProgramFilesFolder">
-      <Directory Id="INSTALLFOLDER" Name="ScreamRouter Desktop" />
+      <Directory Id="INSTALLFOLDER" Name="ScreamRouter Desktop">
+        <Directory Id="RuntimesDir" Name="runtimes">
+          <Directory Id="WinX86Dir" Name="win-x86">
+            <Directory Id="WinX86NativeDir" Name="native" />
+          </Directory>
+          <Directory Id="WinX64Dir" Name="win-x64">
+            <Directory Id="WinX64NativeDir" Name="native" />
+          </Directory>
+          <Directory Id="WinArm64Dir" Name="win-arm64">
+            <Directory Id="WinArm64NativeDir" Name="native" />
+          </Directory>
+        </Directory>
+      </Directory>
     </StandardDirectory>
 
     <StandardDirectory Id="ProgramMenuFolder">
@@ -28,17 +45,13 @@
     <!-- UI Customization -->
     <ui:WixUI Id="WixUI_InstallDir" />
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
-    
-    <!-- License File -->
     <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
     
-    <!-- Define the dialog customizations -->
+    <!-- Exit dialog -->
     <UI>
-      <!-- Define our custom exit dialog -->
       <Dialog Id="CustomExitDialog" Width="370" Height="270" Title="Installation Complete">
         <Control Id="Finish" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Cancel="yes" Text="Finish">
           <Publish Event="EndDialog" Value="Return" />
-          <Publish Event="DoAction" Value="LaunchApplication" Condition="LAUNCHAPPONEXIT = 1" />
         </Control>
         <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Disabled="yes" Text="Cancel" />
         <Control Id="Bitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="234" TabSkip="no" Text="WixUI_Bmp_Dialog" />
@@ -57,42 +70,84 @@
                 Text="Launch ScreamRouter Desktop when Windows starts" />
       </Dialog>
       
-      <!-- Critical: Override the standard ExitDialog with our custom one -->
-      <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" />
-      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="InstallDirDlg" />
-      <Publish Dialog="VerifyReadyDlg" Control="Install" Event="EndDialog" Value="Return" Order="1" />
-      
-      <!-- Show our CustomExitDialog instead of the WixUI's standard ExitDialog -->
-      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="LicenseAgreementDlg" />
-      
-      <!-- Ensure our CustomExitDialog shows instead of the standard one -->
-      <Publish Dialog="ExitDialog" Control="Finish" Event="NewDialog" Value="CustomExitDialog" />
-      
-      <!-- Explicitly replace the standard successful installation dialog with our custom one -->
       <InstallUISequence>
         <Show Dialog="CustomExitDialog" OnExit="success" Overridable="yes" />
       </InstallUISequence>
     </UI>
     
-    <!-- Main application features -->
+    <!-- Features definition -->
     <Feature Id="ProductFeature" Title="ScreamRouter Desktop" Level="1">
-      <ComponentGroupRef Id="ProductComponents" />
+      <ComponentGroupRef Id="AllComponents" />
+      <ComponentRef Id="WebView2ConfigRegistry" />
+      <ComponentRef Id="AutoStartRegistry" />
       <ComponentRef Id="ApplicationShortcut" />
       <ComponentRef Id="DesktopShortcut" />
+      <ComponentRef Id="WebView2LoaderX86Comp" />
+      <ComponentRef Id="WebView2LoaderX64Comp" />
+      <ComponentRef Id="WebView2LoaderArm64Comp" />
+    </Feature>
+    
+    <!-- We need to create a separate Feature for the autostart functionality -->
+    <Feature Id="AutoStartFeature" Title="Run at startup" Level="0">
       <ComponentRef Id="AutoStartRegistry" />
     </Feature>
     
-    <!-- Custom actions for launching the application after installation -->
+    <!-- Custom actions to launch at the end -->
     <CustomAction Id="LaunchApplication"
                   FileRef="ScreamRouterDesktopEXE"
                   ExeCommand=""
                   Return="asyncNoWait" />
-                  
-    <!-- Schedule the custom actions -->
+    
     <InstallExecuteSequence>
       <Custom Action="LaunchApplication" After="InstallFinalize" Condition="LAUNCHAPPONEXIT = 1 AND NOT Installed" />
     </InstallExecuteSequence>
   </Package>
+
+  <!-- Components, files to install -->
+  <Fragment>
+    <ComponentGroup Id="AllComponents" Directory="INSTALLFOLDER">
+      <!-- Main app executable -->
+      <Component Id="MainExecutable" Guid="d4e5f6a5-b9c8-7d7e-6f5a-4b3c2d1e0f1a">
+        <File Id="ScreamRouterDesktopEXE" Source="..\bin\Release\net8.0-windows\ScreamRouterDesktop.exe" KeyPath="yes" />
+      </Component>
+      
+      <!-- App config and DLL files -->
+      <Component Id="CoreFilesComponent" Guid="e5f6a5b9-c8d7-8e6f-5a4b-3c2d1e0f1a2b">
+        <File Id="ScreamRouterDesktopDLL" Source="..\bin\Release\net8.0-windows\ScreamRouterDesktop.dll" KeyPath="yes" />
+        <File Id="DepJSON" Source="..\bin\Release\net8.0-windows\ScreamRouterDesktop.deps.json" />
+        <File Id="RuntimeJSON" Source="..\bin\Release\net8.0-windows\ScreamRouterDesktop.runtimeconfig.json" />
+        <File Id="WebView2CoreDLL" Source="..\bin\Release\net8.0-windows\Microsoft.Web.WebView2.Core.dll" />
+        <File Id="WebView2WinFormsDLL" Source="..\bin\Release\net8.0-windows\Microsoft.Web.WebView2.WinForms.dll" />
+        <File Id="WebView2WpfDLL" Source="..\bin\Release\net8.0-windows\Microsoft.Web.WebView2.Wpf.dll" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+  
+  <!-- WebView2 Loader Components -->
+  <Fragment>
+    <!-- Each native DLL properly placed in its own separate directory -->
+    <Component Id="WebView2LoaderX86Comp" Directory="WinX86NativeDir" Guid="f5742e9c-3c47-4ba3-8733-9a8d8c9cb4c5">
+      <File Id="WebView2LoaderX86" Source="..\bin\Release\net8.0-windows\runtimes\win-x86\native\WebView2Loader.dll" KeyPath="yes" />
+    </Component>
+    
+    <Component Id="WebView2LoaderX64Comp" Directory="WinX64NativeDir" Guid="12345678-1234-1234-1234-123456789abc">
+      <File Id="WebView2LoaderX64" Source="..\bin\Release\net8.0-windows\runtimes\win-x64\native\WebView2Loader.dll" KeyPath="yes" />
+    </Component>
+    
+    <Component Id="WebView2LoaderArm64Comp" Directory="WinArm64NativeDir" Guid="87654321-4321-4321-4321-cba987654321">
+      <File Id="WebView2LoaderArm64" Source="..\bin\Release\net8.0-windows\runtimes\win-arm64\native\WebView2Loader.dll" KeyPath="yes" />
+    </Component>
+  </Fragment>
+  
+  <!-- Registry component for WebView2 configuration -->
+  <Fragment>
+    <Component Id="WebView2ConfigRegistry" Directory="INSTALLFOLDER" Guid="1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d">
+      <!-- Configure WebView2 to use user's AppData for data storage, not program directory -->
+      <RegistryValue Root="HKCU" Key="Software\ScreamRouter\Desktop\WebView2Settings" 
+                    Name="UserDataFolder" Type="string" 
+                    Value="%APPDATA%\ScreamRouter\WebView2" KeyPath="yes" />
+    </Component>
+  </Fragment>
 
   <!-- Auto-start registry component -->
   <Fragment>
@@ -103,7 +158,7 @@
     </Component>
   </Fragment>
   
-  <!-- Application shortcuts -->
+  <!-- Application shortcuts for Start Menu -->
   <Fragment>
     <Component Id="ApplicationShortcut" Directory="ApplicationProgramsFolder" Guid="b2c3d4e5-f6a5-5b9c-8d7e-6f5a4b3c2d1e">
       <Shortcut Id="ApplicationStartMenuShortcut" 
@@ -127,40 +182,4 @@
       <RegistryValue Root="HKCU" Key="Software\ScreamRouter\Desktop" Name="desktop_sc" Type="integer" Value="1" KeyPath="yes" />
     </Component>
   </Fragment>
-
-  <!-- ProductComponents will be defined directly here -->
-  <Fragment>
-    <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
-      <!-- Main executable -->
-      <Component Id="MainExecutable" Guid="d4e5f6a5-b9c8-7d7e-6f5a-4b3c2d1e0f1a">
-        <File Id="ScreamRouterDesktopEXE" Source="ScreamRouterDesktop.exe" KeyPath="yes" />
-      </Component>
-      
-      <!-- Configuration files - each file in its own component -->
-      <Component Id="ConfigFile1" Guid="e5f6a5b9-c8d7-8e6f-5a4b-3c2d1e0f1a2b">
-        <File Id="DepJSON" Source="ScreamRouterDesktop.deps.json" KeyPath="yes" />
-      </Component>
-      
-      <Component Id="ConfigFile2" Guid="f6a5b9c8-d7e6-9f5a-4b3c-2d1e0f1a2b3c">
-        <File Id="RuntimeJSON" Source="ScreamRouterDesktop.runtimeconfig.json" KeyPath="yes" />
-      </Component>
-      
-      <!-- DLL files - each file in its own component -->
-      <Component Id="AppDLLComponent" Guid="a5b9c8d7-e6f5-a4b3-c2d1-e0f1a2b3c4d5">
-        <File Id="AppDLL" Source="ScreamRouterDesktop.dll" KeyPath="yes" />
-      </Component>
-      
-      <Component Id="WebView2Core" Guid="b9c8d7e6-f5a4-b3c2-d1e0-f1a2b3c4d5e6">
-        <File Id="WebView2CoreDLL" Source="Microsoft.Web.WebView2.Core.dll" KeyPath="yes" />
-      </Component>
-      
-      <Component Id="WebView2WinForms" Guid="c8d7e6f5-a4b3-c2d1-e0f1-a2b3c4d5e6f7">
-        <File Id="WebView2WinFormsDLL" Source="Microsoft.Web.WebView2.WinForms.dll" KeyPath="yes" />
-      </Component>
-      
-      <Component Id="WebView2Wpf" Guid="d7e6f5a4-b3c2-d1e0-f1a2-b3c4d5e6f7a8">
-        <File Id="WebView2WpfDLL" Source="Microsoft.Web.WebView2.Wpf.dll" KeyPath="yes" />
-      </Component>
-    </ComponentGroup>
-  </Fragment>
-</Wix>
+ </Wix>

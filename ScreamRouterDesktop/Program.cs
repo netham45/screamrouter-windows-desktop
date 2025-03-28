@@ -1,7 +1,9 @@
 using System;
 using System.Windows.Forms;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Runtime.InteropServices;
+using System.Diagnostics;
 
 namespace ScreamRouterDesktop
 {
@@ -27,13 +29,28 @@ namespace ScreamRouterDesktop
                     
                     // Initialize update manager and check for updates
                     var updateManager = new UpdateManager();
-                    _ = updateManager.CheckForUpdates(); // Fire and forget async task
+                    Debug.WriteLine("[Program] Initializing update check");
+                    
+                    // Handle update check in a way that we can catch errors
+                    Task.Run(async () => {
+                        try
+                        {
+                            Debug.WriteLine("[Program] Starting update check");
+                            await updateManager.CheckForUpdates();
+                            Debug.WriteLine("[Program] Update check completed successfully");
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"[Program] Error during update check: {ex}");
+                            // Don't show error to user - just log it since this is startup
+                        }
+                    });
                     
                     Application.Run(mainForm);
                 }
                 else
                 {
-                    IntPtr hWnd = FindWindow(null, "ScreamRouter Configuration");
+                    IntPtr hWnd = FindWindow(null, "ScreamRouter Desktop Configuration");
                     if (hWnd != IntPtr.Zero)
                     {
                         SetForegroundWindow(hWnd);

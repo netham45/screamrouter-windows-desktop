@@ -39,7 +39,7 @@ jobs:
         
     - name: Sign Application
       run: |
-        Start-Process -FilePath "C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe" -ArgumentList "sign", "/f", "certificate.pfx", "/p", "${{ secrets.SCREAMROUTER_DESKTOP_PFX_B64_PASSWORD }}", "/v", "/fd", "SHA256", "ScreamRouterDesktop/bin/Release/net8.0-windows/ScreamRouterDesktop.exe" -NoNewWindow -Wait
+        Start-Process -FilePath "C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe" -ArgumentList "sign", "/f", "certificate.pfx", "/v", "/fd", "SHA256", "ScreamRouterDesktop/bin/Release/net8.0-windows/ScreamRouterDesktop.exe" -NoNewWindow -Wait
     
     - name: Get short commit hash
       id: commit

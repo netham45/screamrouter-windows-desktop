@@ -39,7 +39,7 @@ jobs:
         
     - name: Sign Application
       run: |
-        "C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe" sign /f certificate.pfx /p "${{ secrets.SCREAMROUTER_DESKTOP_PFX_B64_PASSWORD }}" /v /fd SHA256 ScreamRouterDesktop/bin/Release/net8.0-windows/ScreamRouterDesktop.exe
+        Start-Process -FilePath "C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe" -ArgumentList "sign", "/f", "certificate.pfx", "/p", "${{ secrets.SCREAMROUTER_DESKTOP_PFX_B64_PASSWORD }}", "/v", "/fd", "SHA256", "ScreamRouterDesktop/bin/Release/net8.0-windows/ScreamRouterDesktop.exe" -NoNewWindow -Wait
     
     - name: Get short commit hash
       id: commit
@@ -84,7 +84,7 @@ jobs:
         wix build -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext -o ScreamRouterDesktop-${{ steps.commit.outputs.shortcode }}.msi installer.wxs
         
         # Sign the MSI
-        "C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe" sign /f ../certificate.pfx /p "${{ secrets.SCREAMROUTER_DESKTOP_PFX_B64_PASSWORD }}" /v /fd SHA256 "ScreamRouterDesktop-${{ steps.commit.outputs.shortcode }}.msi"
+        Start-Process -FilePath "C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe" -ArgumentList "sign", "/f", "../certificate.pfx", "/p", "${{ secrets.SCREAMROUTER_DESKTOP_PFX_B64_PASSWORD }}", "/v", "/fd", "SHA256", "ScreamRouterDesktop-${{ steps.commit.outputs.shortcode }}.msi" -NoNewWindow -Wait
         
         # Check if MSI was created and signed before trying to copy it
         if (Test-Path "ScreamRouterDesktop-${{ steps.commit.outputs.shortcode }}.msi") {

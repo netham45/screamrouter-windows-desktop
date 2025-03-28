@@ -37,24 +37,16 @@ namespace ScreamRouterDesktop
                     }
                     
                     // Show first-run dialog to choose update mode
-                    var result = System.Windows.Forms.MessageBox.Show(
-                        "How would you like ScreamRouter to handle updates?\n\n" +
-                        "Yes = Automatically install updates\n" +
-                        "No = Notify me when updates are available\n" +
-                        "Cancel = Never check for updates",
-                        "ScreamRouter Update Settings",
-                        System.Windows.Forms.MessageBoxButtons.YesNoCancel,
-                        System.Windows.Forms.MessageBoxIcon.Question);
-
-                    var selectedMode = result switch
+                    using (var form = new UpdatePreferencesForm())
                     {
-                        System.Windows.Forms.DialogResult.Yes => UpdateMode.AutomaticUpdate,
-                        System.Windows.Forms.DialogResult.No => UpdateMode.NotifyUser,
-                        _ => UpdateMode.DoNotCheck
-                    };
-
-                    key.SetValue(RegistryValue, (int)selectedMode);
-                    return selectedMode;
+                        var result = form.ShowDialog();
+                        var selectedMode = result == System.Windows.Forms.DialogResult.OK 
+                            ? form.SelectedMode 
+                            : UpdateMode.DoNotCheck; // If cancelled, don't check for updates
+                        
+                        key.SetValue(RegistryValue, (int)selectedMode);
+                        return selectedMode;
+                    }
                 }
             }
             set

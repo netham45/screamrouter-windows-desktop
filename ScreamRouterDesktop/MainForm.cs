@@ -68,82 +68,113 @@ namespace ScreamRouterDesktop
 
         private void InitializeCustomComponents()
         {
-            this.Text = "ScreamRouter Configuration";
+            this.Text = "ScreamRouter Desktop Configuration";
+            
             // Use DPI-aware sizing
-float scaleFactor = this.DeviceDpi / 96f;
-int formWidth = (int)(400 * scaleFactor);
-int formHeight = (int)(300 * scaleFactor);
-this.ClientSize = new Size(formWidth, formHeight);
+            float scaleFactor = this.DeviceDpi / 96f;
+            int baseWidth = 600;
+            int baseHeight = 400;
+            int padding = (int)(20 * scaleFactor);
+            
+            this.ClientSize = new Size((int)(baseWidth * scaleFactor), (int)(baseHeight * scaleFactor));
+
+            TableLayoutPanel mainPanel = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(padding),
+                ColumnCount = 1,
+                RowCount = 5,
+                AutoSize = true
+            };
+            mainPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+
+            // URL Section
+            FlowLayoutPanel urlPanel = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.TopDown,
+                AutoSize = true,
+                Margin = new Padding(0, 0, 0, padding),
+                WrapContents = false,
+                Dock = DockStyle.Fill
+            };
 
             Label urlLabel = new Label
             {
-                Text = "ScreamRouter URL:",
-                Location = new Point(20, 20),
-                AutoSize = true
+                Text = "ScreamRouter Desktop URL:",
+                AutoSize = true,
+                Font = new Font(this.Font.FontFamily, 10, FontStyle.Regular),
+                Margin = new Padding(0, 0, 0, padding/2)
             };
-            this.Controls.Add(urlLabel);
+            urlPanel.Controls.Add(urlLabel);
 
             urlTextBox = new TextBox
             {
-                Location = new Point(20, 40),
-                Size = new Size(340, 20)
+                Width = (int)(450 * scaleFactor),
+                Margin = new Padding(0, 0, 0, padding)
             };
-            this.Controls.Add(urlTextBox);
+            urlPanel.Controls.Add(urlTextBox);
 
-            /*Label ipPortLabel = new Label
-            {
-                Text = "ScreamRouter IP:Port:",
-                Location = new Point(20, 70),
-                AutoSize = true
-            };
-            this.Controls.Add(ipPortLabel);
+            mainPanel.Controls.Add(urlPanel);
 
-            ipPortTextBox = new TextBox
+            // Buttons Panel
+            FlowLayoutPanel buttonsPanel = new FlowLayoutPanel
             {
-                Location = new Point(20, 90),
-                Size = new Size(340, 20)
+                FlowDirection = FlowDirection.LeftToRight,
+                AutoSize = true,
+                Margin = new Padding(0, 0, 0, padding),
+                WrapContents = false
             };
-            this.Controls.Add(ipPortTextBox); */
 
             saveButton = new Button
             {
                 Text = "Save Configuration",
-                Location = new Point(20, 130),
-                Size = new Size(150, 30)
+                Size = new Size((int)(150 * scaleFactor), (int)(30 * scaleFactor)),
+                Margin = new Padding(0, 0, padding, 0)
             };
             saveButton.Click += SaveButton_Click;
-            this.Controls.Add(saveButton);
+            buttonsPanel.Controls.Add(saveButton);
 
             openWebInterfaceButton = new Button
             {
                 Text = "Open Web Interface",
-                Location = new Point(180, 130),
-                Size = new Size(150, 30)
+                Size = new Size((int)(150 * scaleFactor), (int)(30 * scaleFactor)),
+                Margin = new Padding(0, 0, padding, 0)
             };
             openWebInterfaceButton.Click += OpenWebInterfaceButton_Click;
-            this.Controls.Add(openWebInterfaceButton);
-            
+            buttonsPanel.Controls.Add(openWebInterfaceButton);
+
             pinToNotificationAreaButton = new Button
             {
                 Text = "Pin to Notification Area",
-                Location = new Point(20, 170),
-                Size = new Size(150, 30)
+                Size = new Size((int)(150 * scaleFactor), (int)(30 * scaleFactor))
             };
             pinToNotificationAreaButton.Click += PinToNotificationAreaButton_Click;
-            this.Controls.Add(pinToNotificationAreaButton);
+            buttonsPanel.Controls.Add(pinToNotificationAreaButton);
+
+            mainPanel.Controls.Add(buttonsPanel);
+
+            // Update Mode Section
+            FlowLayoutPanel updatePanel = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.TopDown,
+                AutoSize = true,
+                Margin = new Padding(0, padding, 0, 0),
+                WrapContents = false,
+                Dock = DockStyle.Fill
+            };
 
             Label updateLabel = new Label
             {
                 Text = "Update Mode:",
-                Location = new Point(20, 220),
-                AutoSize = true
+                AutoSize = true,
+                Font = new Font(this.Font.FontFamily, 10, FontStyle.Regular),
+                Margin = new Padding(0, 0, 0, padding/2)
             };
-            this.Controls.Add(updateLabel);
+            updatePanel.Controls.Add(updateLabel);
 
             updateModeComboBox = new ComboBox
             {
-                Location = new Point(20, 240),
-                Size = new Size(340, 30),
+                Width = (int)(450 * scaleFactor),
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
             updateModeComboBox.Items.AddRange(new string[] {
@@ -153,8 +184,11 @@ this.ClientSize = new Size(formWidth, formHeight);
             });
             updateModeComboBox.SelectedIndex = (int)updateManager.CurrentMode;
             updateModeComboBox.SelectedIndexChanged += UpdateModeComboBox_SelectedIndexChanged;
-            this.Controls.Add(updateModeComboBox);
+            updatePanel.Controls.Add(updateModeComboBox);
 
+            mainPanel.Controls.Add(updatePanel);
+
+            this.Controls.Add(mainPanel);
             InitializeNotifyIcon();
         }
 

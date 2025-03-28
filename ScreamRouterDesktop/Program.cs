@@ -24,6 +24,11 @@ namespace ScreamRouterDesktop
                 {
                     MainForm mainForm = new MainForm();
                     HandleArguments(args, mainForm);
+                    
+                    // Initialize update manager and check for updates
+                    var updateManager = new UpdateManager();
+                    _ = updateManager.CheckForUpdates(); // Fire and forget async task
+                    
                     Application.Run(mainForm);
                 }
                 else

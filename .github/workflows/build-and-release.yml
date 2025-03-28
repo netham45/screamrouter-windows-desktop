@@ -39,10 +39,17 @@ jobs:
         
     - name: Sign Application
       run: |
-        # Sign with SHA1 for legacy compatibility
-        Start-Process -FilePath "C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe" -ArgumentList "sign", "/f", "certificate.pfx", "/p", "${{ secrets.SCREAMROUTER_DESKTOP_PFX_B64_PASSWORD }}", "/v", "/fd", "SHA1", "/tr", "http://timestamp.digicert.com", "/td", "SHA1", "ScreamRouterDesktop/bin/Release/net8.0-windows/ScreamRouterDesktop.exe" -NoNewWindow -Wait
-        # Sign with SHA256
-        Start-Process -FilePath "C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe" -ArgumentList "sign", "/f", "certificate.pfx", "/p", "${{ secrets.SCREAMROUTER_DESKTOP_PFX_B64_PASSWORD }}", "/v", "/fd", "SHA256", "/tr", "http://timestamp.digicert.com", "/td", "SHA256", "/as", "ScreamRouterDesktop/bin/Release/net8.0-windows/ScreamRouterDesktop.exe" -NoNewWindow -Wait
+        $files = @(
+          "ScreamRouterDesktop/bin/Release/net8.0-windows/ScreamRouterDesktop.exe",
+          "ScreamRouterDesktop/bin/Release/net8.0-windows/ScreamRouterDesktop.dll"
+        )
+        
+        foreach ($file in $files) {
+          # Sign with SHA1 for legacy compatibility
+          Start-Process -FilePath "C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe" -ArgumentList "sign", "/f", "certificate.pfx", "/v", "/fd", "SHA1", "/tr", "http://timestamp.digicert.com", "/td", "SHA1", $file -NoNewWindow -Wait
+          # Sign with SHA256
+          Start-Process -FilePath "C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe" -ArgumentList "sign", "/f", "certificate.pfx", "/v", "/fd", "SHA256", "/tr", "http://timestamp.digicert.com", "/td", "SHA256", "/as", $file -NoNewWindow -Wait
+        }
     
     - name: Get short commit hash
       id: commit

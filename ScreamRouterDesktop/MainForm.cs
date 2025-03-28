@@ -19,8 +19,10 @@ namespace ScreamRouterDesktop
         private Button? openWebInterfaceButton;
         private Button? pinToStartButton;
         private Button? pinToNotificationAreaButton;
+        private ComboBox? updateModeComboBox;
         private WebInterfaceForm? webInterfaceForm;
         private GlobalKeyboardHook? globalKeyboardHook;
+        private UpdateManager updateManager;
 
         [DllImport("shell32.dll", SetLastError = true)]
         static extern void SetCurrentProcessExplicitAppUserModelID([MarshalAs(UnmanagedType.LPWStr)] string AppID);
@@ -31,6 +33,7 @@ namespace ScreamRouterDesktop
         public MainForm()
         {
             InitializeComponent();
+            updateManager = new UpdateManager();
             InitializeCustomComponents();
             LoadConfiguration();
             InitializeGlobalKeyboardHook();
@@ -128,6 +131,29 @@ this.ClientSize = new Size(formWidth, formHeight);
             };
             pinToNotificationAreaButton.Click += PinToNotificationAreaButton_Click;
             this.Controls.Add(pinToNotificationAreaButton);
+
+            Label updateLabel = new Label
+            {
+                Text = "Update Mode:",
+                Location = new Point(20, 220),
+                AutoSize = true
+            };
+            this.Controls.Add(updateLabel);
+
+            updateModeComboBox = new ComboBox
+            {
+                Location = new Point(20, 240),
+                Size = new Size(340, 30),
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+            updateModeComboBox.Items.AddRange(new string[] {
+                "Do not check for updates",
+                "Notify me when updates are available",
+                "Automatically install updates"
+            });
+            updateModeComboBox.SelectedIndex = (int)updateManager.CurrentMode;
+            updateModeComboBox.SelectedIndexChanged += UpdateModeComboBox_SelectedIndexChanged;
+            this.Controls.Add(updateModeComboBox);
 
             InitializeNotifyIcon();
         }
@@ -274,10 +300,22 @@ this.ClientSize = new Size(formWidth, formHeight);
             }
         }
 
+        private void UpdateModeComboBox_SelectedIndexChanged(object? sender, EventArgs e)
+        {
+            if (updateModeComboBox != null)
+            {
+                updateManager.CurrentMode = (UpdateMode)updateModeComboBox.SelectedIndex;
+            }
+        }
+
         private void SaveConfiguration()
         {
             Registry.SetValue(@"HKEY_CURRENT_USER\Software\ScreamRouterDesktop", "Url", urlTextBox?.Text ?? "");
             Registry.SetValue(@"HKEY_CURRENT_USER\Software\ScreamRouterDesktop", "IpPort", ipPortTextBox?.Text ?? "");
+            if (updateModeComboBox != null)
+            {
+                updateManager.CurrentMode = (UpdateMode)updateModeComboBox.SelectedIndex;
+            }
         }
 
         private void LoadConfiguration()

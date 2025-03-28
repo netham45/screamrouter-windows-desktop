@@ -134,9 +134,10 @@ this.ClientSize = new Size(formWidth, formHeight);
 
         private void InitializeNotifyIcon()
         {
+            // Use the application icon (which is embedded in the executable)
             notifyIcon = new NotifyIcon
             {
-                Icon = SystemIcons.Application,
+                Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath),
                 Visible = true,
                 Text = "ScreamRouter Desktop"
             };
@@ -258,6 +259,8 @@ this.ClientSize = new Size(formWidth, formHeight);
                 if (webInterfaceForm == null || webInterfaceForm.IsDisposed)
                 {
                     webInterfaceForm = new WebInterfaceForm(url);
+                    webInterfaceForm.Show();
+                    webInterfaceForm.Hide();
                 }
                 
                 if (webInterfaceForm.Visible)
@@ -287,6 +290,15 @@ this.ClientSize = new Size(formWidth, formHeight);
             if (string.IsNullOrEmpty(ipPortTextBox?.Text))
             {
                 ResolveHostname();
+            }
+            
+            // Create the WebInterfaceForm on load
+            string url = urlTextBox?.Text ?? "";
+            if (!string.IsNullOrEmpty(url))
+            {
+                webInterfaceForm = new WebInterfaceForm(url);
+                // Initially hide it
+                webInterfaceForm.Hide();
             }
         }
 

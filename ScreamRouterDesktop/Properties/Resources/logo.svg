@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="256px" height="256px" viewBox="0 0 256 256" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#0086e6" />
+            <stop offset="100%" stop-color="#0069b4" />
+        </linearGradient>
+    </defs>
+    <rect width="100%" height="100%" fill="transparent"/>
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <!-- Sound Waves with updated colors -->
+        <!-- Inner wave - Medium Blue -->
+        <path d="M10,120 C30,120 30,80 50,80 C70,80 70,160 90,160 C110,160 110,60 130,60 C150,60 150,180 170,180 C190,180 190,40 210,40 C230,40 230,120 250,120" 
+              stroke="#0086e6" stroke-width="14" stroke-linecap="round" opacity="0.7"></path>
+        
+        <!-- Router-like Elements with gradient -->
+        <rect x="78" y="190" width="100" height="10" rx="5" fill="#0086e6"></rect>
+        <rect x="88" y="210" width="80" height="10" rx="5" fill="#0086e6"></rect>
+        <rect x="98" y="230" width="60" height="10" rx="5" fill="#0086e6"></rect>
+    </g>
+</svg>

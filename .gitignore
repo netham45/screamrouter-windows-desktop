@@ -154,3 +154,9 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+certs/**
+!certs/.gitkeep
+
+**/*.exe
+**/*.dll

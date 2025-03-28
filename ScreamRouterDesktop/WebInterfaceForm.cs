@@ -21,11 +21,30 @@ namespace ScreamRouterDesktop
         public WebInterfaceForm(string url)
         {
             this.url = url;
+            // Start with opacity 0 to mimic the hide/show behavior that works
             InitializeComponent();
             InitializeWebView();
             PositionFormBottomRight();
             this.Deactivate += WebInterfaceForm_Deactivate;
             this.Shown += WebInterfaceForm_Shown;
+
+            // Workaround for transparency bugging out
+            this.Opacity = 0;
+            System.Threading.Timer timer = null;
+                timer = new System.Threading.Timer((state) => {
+                    this.BeginInvoke(new Action(() => {
+                        this.Show();
+                        System.Threading.Timer timer2 = null;
+                        timer2 = new System.Threading.Timer((state) => {
+                            this.BeginInvoke(new Action(() => {
+                                this.Hide();
+                                this.Opacity = 1;
+                                timer2?.Dispose();
+                            }));
+                        }, null, 5, System.Threading.Timeout.Infinite);
+                        timer?.Dispose();
+                    }));
+                }, null, 5, System.Threading.Timeout.Infinite);
         }
 
         protected override CreateParams CreateParams
@@ -56,6 +75,7 @@ namespace ScreamRouterDesktop
             this.Name = "WebInterfaceForm";
             this.ShowInTaskbar = false;
             this.TopMost = true;
+            this.CreateGraphics().Clear(Color.Transparent);
             //this.AutoScaleMode = AutoScaleMode.None;
             this.ResumeLayout(false);
         }
@@ -65,6 +85,7 @@ namespace ScreamRouterDesktop
             webView = new WebView2();
             webView.Dock = DockStyle.Fill;
             this.Controls.Add(webView);
+            webView.CreateGraphics().Clear(Color.Transparent);
             webView.BringToFront();
 
             try
@@ -83,25 +104,25 @@ namespace ScreamRouterDesktop
                     await webView.EnsureCoreWebView2Async(cwv2Environment);
                     
                     // Completely disable all browser UI elements
-                    webView.CoreWebView2.Settings.AreDevToolsEnabled = false;
+                    /*webView.CoreWebView2.Settings.AreDevToolsEnabled = false;
                     webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
                     webView.CoreWebView2.Settings.AreDefaultScriptDialogsEnabled = false;
                     webView.CoreWebView2.Settings.IsBuiltInErrorPageEnabled = false;
                     webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
-                    webView.CoreWebView2.Settings.IsZoomControlEnabled = false;
-                    webView.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = false;
+                    webView.CoreWebView2.Settings.IsZoomControlEnabled = false;*/
+                    webView.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = true;
                     
                     // Create custom context to block all UI elements
                     webView.CoreWebView2.Profile.PreferredColorScheme = CoreWebView2PreferredColorScheme.Dark;
                     
                     isWebViewInitialized = true;
                 }
-                webView.CoreWebView2.Settings.IsZoomControlEnabled = false;
+/*                webView.CoreWebView2.Settings.IsZoomControlEnabled = false;
                 webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
-                webView.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = false;
+                webView.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = true;
                 webView.CoreWebView2.Settings.AreDevToolsEnabled = false;
                 webView.CoreWebView2.Settings.AreDefaultScriptDialogsEnabled = false;
-                webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
+                webView.CoreWebView2.Settings.IsStatusBarEnabled = false;*/
                 
                 // Create a custom environment to hide the browser UI
                 var environment = webView.CoreWebView2.Environment;
@@ -145,7 +166,7 @@ namespace ScreamRouterDesktop
         {
             this.Hide();
         }
-
+        
         private void WebInterfaceForm_Shown(object? sender, EventArgs e)
         {
             if (webView != null && webView.CoreWebView2 != null)
@@ -153,6 +174,8 @@ namespace ScreamRouterDesktop
                 InvokeScript("DesktopMenuShow");
             }
             SetForegroundWindow(this.Handle);
+            this.Invalidate();
+            this.Update();
         }
 
         public async void InvokeScript(string functionName)
@@ -211,20 +234,20 @@ namespace ScreamRouterDesktop
                 var envOptions = new CoreWebView2EnvironmentOptions();
                 envOptions.AdditionalBrowserArguments = "--app";
                 
-                // Use temp path for WebView2 data
-                string popupUserDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ScreamRouterDesktop", "WebView2Popups");
-                Directory.CreateDirectory(popupUserDataFolder);
-                var env = await CoreWebView2Environment.CreateAsync(null, popupUserDataFolder, envOptions);
+                // Use the same user data folder as the main WebView2 to share localStorage
+                string userDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ScreamRouterDesktop", "WebView2");
+                Directory.CreateDirectory(userDataFolder);
+                var env = await CoreWebView2Environment.CreateAsync(null, userDataFolder, envOptions);
                 await newWebView.EnsureCoreWebView2Async(env);
                 
                 // Disable all browser UI elements
-                newWebView.CoreWebView2.Settings.IsStatusBarEnabled = false;
+                /*newWebView.CoreWebView2.Settings.IsStatusBarEnabled = false;
                 newWebView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
                 newWebView.CoreWebView2.Settings.AreDevToolsEnabled = false;
                 newWebView.CoreWebView2.Settings.IsBuiltInErrorPageEnabled = false;
                 newWebView.CoreWebView2.Settings.AreDefaultScriptDialogsEnabled = false;
-                newWebView.CoreWebView2.Settings.IsZoomControlEnabled = false;
-                newWebView.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = false;
+                newWebView.CoreWebView2.Settings.IsZoomControlEnabled = false;*/
+                newWebView.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = true;  // Leave refresh and dev console enabled
 
                 // Add event handler for title changes
                 newWebView.CoreWebView2.DocumentTitleChanged += (sender, e) =>
@@ -243,4 +266,3 @@ namespace ScreamRouterDesktop
         }
     }
 }
-

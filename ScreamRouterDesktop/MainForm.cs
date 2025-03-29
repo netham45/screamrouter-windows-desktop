@@ -83,8 +83,9 @@ namespace ScreamRouterDesktop
             // Use DPI-aware sizing
             float scaleFactor = this.DeviceDpi / 96f;
             int baseWidth = 600;
-            int baseHeight = 400;
+            int baseHeight = 450; // Increased height for better spacing
             int padding = (int)(20 * scaleFactor);
+            int sectionSpacing = (int)(30 * scaleFactor);
             
             this.ClientSize = new Size((int)(baseWidth * scaleFactor), (int)(baseHeight * scaleFactor));
 
@@ -93,26 +94,40 @@ namespace ScreamRouterDesktop
                 Dock = DockStyle.Fill,
                 Padding = new Padding(padding),
                 ColumnCount = 1,
-                RowCount = 5,
+                RowCount = 4, // Reduced to match our sections
                 AutoSize = true
             };
             mainPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            
+            // Set consistent row heights
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             // URL Section
+            GroupBox urlGroupBox = new GroupBox
+            {
+                Text = "ScreamRouter Configuration",
+                Dock = DockStyle.Fill,
+                AutoSize = true,
+                Padding = new Padding(padding),
+                Margin = new Padding(0, 0, 0, sectionSpacing)
+            };
+
             FlowLayoutPanel urlPanel = new FlowLayoutPanel
             {
                 FlowDirection = FlowDirection.TopDown,
                 AutoSize = true,
-                Margin = new Padding(0, 0, 0, padding),
                 WrapContents = false,
                 Dock = DockStyle.Fill
             };
 
             Label urlLabel = new Label
             {
-                Text = "ScreamRouter Desktop URL:",
+                Text = "Server URL:",
                 AutoSize = true,
-                Font = new Font(this.Font.FontFamily, 10, FontStyle.Regular),
+                Font = new Font(this.Font.FontFamily, 9, FontStyle.Regular),
                 Margin = new Padding(0, 0, 0, padding/2)
             };
             urlPanel.Controls.Add(urlLabel);
@@ -120,19 +135,21 @@ namespace ScreamRouterDesktop
             urlTextBox = new TextBox
             {
                 Width = (int)(450 * scaleFactor),
-                Margin = new Padding(0, 0, 0, padding)
+                Margin = new Padding(0, 0, 0, padding/2)
             };
             urlPanel.Controls.Add(urlTextBox);
 
-            mainPanel.Controls.Add(urlPanel);
+            urlGroupBox.Controls.Add(urlPanel);
+            mainPanel.Controls.Add(urlGroupBox, 0, 0);
 
             // Buttons Panel
             FlowLayoutPanel buttonsPanel = new FlowLayoutPanel
             {
                 FlowDirection = FlowDirection.LeftToRight,
                 AutoSize = true,
-                Margin = new Padding(0, 0, 0, padding),
-                WrapContents = false
+                Margin = new Padding(0, 0, 0, sectionSpacing),
+                WrapContents = false,
+                Dock = DockStyle.Fill
             };
 
             saveButton = new Button
@@ -161,26 +178,25 @@ namespace ScreamRouterDesktop
             pinToNotificationAreaButton.Click += PinToNotificationAreaButton_Click;
             buttonsPanel.Controls.Add(pinToNotificationAreaButton);
 
-            mainPanel.Controls.Add(buttonsPanel);
+            mainPanel.Controls.Add(buttonsPanel, 0, 1);
 
             // Scream Settings Section
+            GroupBox screamGroupBox = new GroupBox
+            {
+                Text = "Scream Audio Settings",
+                Dock = DockStyle.Fill,
+                AutoSize = true,
+                Padding = new Padding(padding),
+                Margin = new Padding(0, 0, 0, sectionSpacing)
+            };
+
             FlowLayoutPanel screamPanel = new FlowLayoutPanel
             {
                 FlowDirection = FlowDirection.TopDown,
                 AutoSize = true,
-                Margin = new Padding(0, padding, 0, padding),
                 WrapContents = false,
                 Dock = DockStyle.Fill
             };
-
-            Label screamLabel = new Label
-            {
-                Text = "Scream Audio Settings:",
-                AutoSize = true,
-                Font = new Font(this.Font.FontFamily, 10, FontStyle.Bold),
-                Margin = new Padding(0, 0, 0, padding)
-            };
-            screamPanel.Controls.Add(screamLabel);
 
             // Sender Settings
             senderEnabledCheckBox = new CheckBox
@@ -293,14 +309,23 @@ namespace ScreamRouterDesktop
             receiverPortPanel.Controls.AddRange(new Control[] { receiverPortLabel, receiverPortNumeric });
             screamPanel.Controls.Add(receiverPortPanel);
 
-            mainPanel.Controls.Add(screamPanel);
+            screamGroupBox.Controls.Add(screamPanel);
+            mainPanel.Controls.Add(screamGroupBox, 0, 2);
 
             // Update Mode Section
+            GroupBox updateGroupBox = new GroupBox
+            {
+                Text = "Update Settings",
+                Dock = DockStyle.Fill,
+                AutoSize = true,
+                Padding = new Padding(padding),
+                Margin = new Padding(0)
+            };
+
             FlowLayoutPanel updatePanel = new FlowLayoutPanel
             {
                 FlowDirection = FlowDirection.TopDown,
                 AutoSize = true,
-                Margin = new Padding(0, 0, 0, padding),
                 WrapContents = false,
                 Dock = DockStyle.Fill
             };
@@ -309,7 +334,7 @@ namespace ScreamRouterDesktop
             {
                 Text = "Update Mode:",
                 AutoSize = true,
-                Font = new Font(this.Font.FontFamily, 10, FontStyle.Regular),
+                Font = new Font(this.Font.FontFamily, 9, FontStyle.Regular),
                 Margin = new Padding(0, 0, 0, padding/2)
             };
             updatePanel.Controls.Add(updateLabel);
@@ -317,7 +342,8 @@ namespace ScreamRouterDesktop
             updateModeComboBox = new ComboBox
             {
                 Width = (int)(450 * scaleFactor),
-                DropDownStyle = ComboBoxStyle.DropDownList
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Margin = new Padding(0, 0, 0, padding/2)
             };
             updateModeComboBox.Items.AddRange(new string[] {
                 "Do not check for updates",
@@ -328,7 +354,8 @@ namespace ScreamRouterDesktop
             updateModeComboBox.SelectedIndexChanged += UpdateModeComboBox_SelectedIndexChanged;
             updatePanel.Controls.Add(updateModeComboBox);
 
-            mainPanel.Controls.Add(updatePanel);
+            updateGroupBox.Controls.Add(updatePanel);
+            mainPanel.Controls.Add(updateGroupBox, 0, 3);
 
             this.Controls.Add(mainPanel);
             InitializeNotifyIcon();

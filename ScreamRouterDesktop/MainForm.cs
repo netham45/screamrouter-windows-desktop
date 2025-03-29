@@ -141,7 +141,7 @@ namespace ScreamRouterDesktop
 
             urlGroupBox.Controls.Add(urlPanel);
             mainPanel.Controls.Add(urlGroupBox, 0, 0);
-
+ 
             // Buttons Panel
             FlowLayoutPanel buttonsPanel = new FlowLayoutPanel
             {
@@ -206,10 +206,7 @@ namespace ScreamRouterDesktop
                 AutoSize = true,
                 Margin = new Padding(0, 0, 0, padding/2)
             };
-            senderEnabledCheckBox.CheckedChanged += (s, e) => {
-                screamSettings.SenderEnabled = senderEnabledCheckBox.Checked;
-                screamSettings.RestartProcesses();
-            };
+            senderEnabledCheckBox.CheckedChanged += (s, e) => {};
             screamPanel.Controls.Add(senderEnabledCheckBox);
 
             Label senderIpLabel = new Label { Text = "Sender IP:", AutoSize = true };
@@ -219,11 +216,7 @@ namespace ScreamRouterDesktop
                 Width = (int)(200 * scaleFactor), 
                 Margin = new Padding(0, 0, padding, padding/2) 
             };
-            senderIpTextBox.TextChanged += (s, e) => {
-                screamSettings.SenderIP = senderIpTextBox.Text;
-                if (screamSettings.SenderEnabled)
-                    screamSettings.RestartProcesses();
-            };
+            senderIpTextBox.TextChanged += (s, e) => {};
             FlowLayoutPanel senderIpPanel = new FlowLayoutPanel
             {
                 FlowDirection = FlowDirection.LeftToRight,
@@ -243,11 +236,7 @@ namespace ScreamRouterDesktop
                 Width = (int)(80 * scaleFactor),
                 Margin = new Padding(0, 0, padding, padding/2)
             };
-            senderPortNumeric.ValueChanged += (s, e) => {
-                screamSettings.SenderPort = (int)senderPortNumeric.Value;
-                if (screamSettings.SenderEnabled)
-                    screamSettings.RestartProcesses();
-            };
+            senderPortNumeric.ValueChanged += (s, e) => {};
             FlowLayoutPanel senderPortPanel = new FlowLayoutPanel
             {
                 FlowDirection = FlowDirection.LeftToRight,
@@ -264,11 +253,7 @@ namespace ScreamRouterDesktop
                 AutoSize = true,
                 Margin = new Padding(0, 0, 0, padding)
             };
-            multicastCheckBox.CheckedChanged += (s, e) => {
-                screamSettings.SenderMulticast = multicastCheckBox.Checked;
-                if (screamSettings.SenderEnabled)
-                    screamSettings.RestartProcesses();
-            };
+            multicastCheckBox.CheckedChanged += (s, e) => {};
             screamPanel.Controls.Add(multicastCheckBox);
 
             // Receiver Settings
@@ -279,10 +264,7 @@ namespace ScreamRouterDesktop
                 AutoSize = true,
                 Margin = new Padding(0, 0, 0, padding/2)
             };
-            receiverEnabledCheckBox.CheckedChanged += (s, e) => {
-                screamSettings.ReceiverEnabled = receiverEnabledCheckBox.Checked;
-                screamSettings.RestartProcesses();
-            };
+            receiverEnabledCheckBox.CheckedChanged += (s, e) => {};
             screamPanel.Controls.Add(receiverEnabledCheckBox);
 
             Label receiverPortLabel = new Label { Text = "Receiver Port:", AutoSize = true };
@@ -295,11 +277,7 @@ namespace ScreamRouterDesktop
                 Width = (int)(80 * scaleFactor),
                 Margin = new Padding(0, 0, padding, padding)
             };
-            receiverPortNumeric.ValueChanged += (s, e) => {
-                screamSettings.ReceiverPort = (int)receiverPortNumeric.Value;
-                if (screamSettings.ReceiverEnabled)
-                    screamSettings.RestartProcesses();
-            };
+            receiverPortNumeric.ValueChanged += (s, e) => {};
             FlowLayoutPanel receiverPortPanel = new FlowLayoutPanel
             {
                 FlowDirection = FlowDirection.LeftToRight,

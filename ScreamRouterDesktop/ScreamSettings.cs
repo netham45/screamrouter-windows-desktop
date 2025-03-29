@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using Microsoft.Win32;
 
 namespace ScreamRouterDesktop
@@ -8,6 +9,90 @@ namespace ScreamRouterDesktop
     {
         private Process? senderProcess;
         private Process? receiverProcess;
+        private IntPtr jobHandle;
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+        static extern IntPtr CreateJobObject(IntPtr lpJobAttributes, string? name);
+
+        [DllImport("kernel32.dll")]
+        static extern bool AssignProcessToJobObject(IntPtr hJob, IntPtr hProcess);
+
+        [DllImport("kernel32.dll")]
+        static extern bool SetInformationJobObject(IntPtr hJob, JobObjectInfoType infoType, IntPtr lpJobObjectInfo, uint cbJobObjectInfoLength);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        static extern bool CloseHandle(IntPtr hObject);
+
+        private enum JobObjectInfoType
+        {
+            ExtendedLimitInformation = 9
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct JOBOBJECT_BASIC_LIMIT_INFORMATION
+        {
+            public Int64 PerProcessUserTimeLimit;
+            public Int64 PerJobUserTimeLimit;
+            public UInt32 LimitFlags;
+            public UIntPtr MinimumWorkingSetSize;
+            public UIntPtr MaximumWorkingSetSize;
+            public UInt32 ActiveProcessLimit;
+            public UIntPtr Affinity;
+            public UInt32 PriorityClass;
+            public UInt32 SchedulingClass;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct IO_COUNTERS
+        {
+            public UInt64 ReadOperationCount;
+            public UInt64 WriteOperationCount;
+            public UInt64 OtherOperationCount;
+            public UInt64 ReadTransferCount;
+            public UInt64 WriteTransferCount;
+            public UInt64 OtherTransferCount;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct JOBOBJECT_EXTENDED_LIMIT_INFORMATION
+        {
+            public JOBOBJECT_BASIC_LIMIT_INFORMATION BasicLimitInformation;
+            public IO_COUNTERS IoInfo;
+            public UIntPtr ProcessMemoryLimit;
+            public UIntPtr JobMemoryLimit;
+            public UIntPtr PeakProcessMemoryUsed;
+            public UIntPtr PeakJobMemoryUsed;
+        }
+
+        public ScreamSettings()
+        {
+            // Create the job object
+            jobHandle = CreateJobObject(IntPtr.Zero, null);
+
+            // Configure the job object to kill processes when the job is closed
+            var info = new JOBOBJECT_EXTENDED_LIMIT_INFORMATION();
+            info.BasicLimitInformation.LimitFlags = 0x2000; // JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+
+            var length = Marshal.SizeOf(typeof(JOBOBJECT_EXTENDED_LIMIT_INFORMATION));
+            var extendedInfoPtr = Marshal.AllocHGlobal(length);
+            try
+            {
+                Marshal.StructureToPtr(info, extendedInfoPtr, false);
+                SetInformationJobObject(jobHandle, JobObjectInfoType.ExtendedLimitInformation, extendedInfoPtr, (uint)length);
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(extendedInfoPtr);
+            }
+        }
+
+        ~ScreamSettings()
+        {
+            if (jobHandle != IntPtr.Zero)
+            {
+                CloseHandle(jobHandle);
+            }
+        }
 
         public bool SenderEnabled { get; set; }
         public string SenderIP { get; set; } = "127.0.0.1";
@@ -60,6 +145,7 @@ namespace ScreamRouterDesktop
                     }
                 };
                 senderProcess.Start();
+                AssignProcessToJobObject(jobHandle, senderProcess.Handle);
             }
 
             if (ReceiverEnabled && (receiverProcess == null || receiverProcess.HasExited))
@@ -75,6 +161,7 @@ namespace ScreamRouterDesktop
                     }
                 };
                 receiverProcess.Start();
+                AssignProcessToJobObject(jobHandle, receiverProcess.Handle);
             }
         }
 

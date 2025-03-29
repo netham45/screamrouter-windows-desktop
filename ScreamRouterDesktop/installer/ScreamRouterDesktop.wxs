@@ -107,21 +107,21 @@
   <Fragment>
     <ComponentGroup Id="AllComponents" Directory="INSTALLFOLDER">
       <!-- Main app executable -->
-      <Component Id="MainExecutable" Guid="d4e5f6a5-b9c8-7d7e-6f5a-4b3c2d1e0f1a">
+      <Component Id="MainExecutable" Guid="41a3e384-0c4b-11f0-a983-000f5326d481">
         <File Id="ScreamRouterDesktopEXE" Source="ScreamRouterDesktop.exe" KeyPath="yes" />
       </Component>
 
       <!-- Scream executables -->
-      <Component Id="ScreamSenderExecutable" Guid="a1b2c3d4-e5f6-7g8h-9i0j-k1l2m3n4o5p6">
+      <Component Id="ScreamSenderExecutable" Guid="422b100c-0c4b-11f0-a3df-000f5326d481">
         <File Id="ScreamSenderEXE" Source="ScreamSender.exe" KeyPath="yes" />
       </Component>
 
-      <Component Id="ScreamReceiverExecutable" Guid="b2c3d4e5-f6g7-8h9i-0j1k-l2m3n4o5p6q7">
+      <Component Id="ScreamReceiverExecutable" Guid="6700bbac-0c4b-11f0-8ebb-000f5326d481">
         <File Id="ScreamReceiverEXE" Source="ScreamReceiver.exe" KeyPath="yes" />
       </Component>
       
       <!-- App config and DLL files -->
-      <Component Id="CoreFilesComponent" Guid="e5f6a5b9-c8d7-8e6f-5a4b-3c2d1e0f1a2b">
+      <Component Id="CoreFilesComponent" Guid="6721899a-0c4b-11f0-8881-000f5326d481">
         <File Id="ScreamRouterDesktopDLL" Source="ScreamRouterDesktop.dll" KeyPath="yes" />
         <File Id="DepJSON" Source="ScreamRouterDesktop.deps.json" />
         <File Id="RuntimeJSON" Source="ScreamRouterDesktop.runtimeconfig.json" />
@@ -135,22 +135,22 @@
   <!-- WebView2 Loader Components -->
   <Fragment>
     <!-- Each native DLL properly placed in its own separate directory -->
-    <Component Id="WebView2LoaderX86Comp" Directory="WinX86NativeDir" Guid="f5742e9c-3c47-4ba3-8733-9a8d8c9cb4c5">
+    <Component Id="WebView2LoaderX86Comp" Directory="WinX86NativeDir" Guid="674055be-0c4b-11f0-b67a-000f5326d481">
       <File Id="WebView2LoaderX86" Source="runtimes\win-x86\native\WebView2Loader.dll" KeyPath="yes" />
     </Component>
     
-    <Component Id="WebView2LoaderX64Comp" Directory="WinX64NativeDir" Guid="12345678-1234-1234-1234-123456789abc">
+    <Component Id="WebView2LoaderX64Comp" Directory="WinX64NativeDir" Guid="675df6fa-0c4b-11f0-8a2e-000f5326d481">
       <File Id="WebView2LoaderX64" Source="runtimes\win-x64\native\WebView2Loader.dll" KeyPath="yes" />
     </Component>
     
-    <Component Id="WebView2LoaderArm64Comp" Directory="WinArm64NativeDir" Guid="87654321-4321-4321-4321-cba987654321">
+    <Component Id="WebView2LoaderArm64Comp" Directory="WinArm64NativeDir" Guid="677f39c8-0c4b-11f0-b0a9-000f5326d481">
       <File Id="WebView2LoaderArm64" Source="runtimes\win-arm64\native\WebView2Loader.dll" KeyPath="yes" />
     </Component>
   </Fragment>
   
   <!-- Registry component for WebView2 configuration -->
   <Fragment>
-    <Component Id="WebView2ConfigRegistry" Directory="INSTALLFOLDER" Guid="1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d">
+    <Component Id="WebView2ConfigRegistry" Directory="INSTALLFOLDER" Guid="679d08cc-0c4b-11f0-b56b-000f5326d481">
       <!-- Configure WebView2 to use user's AppData for data storage, not program directory -->
       <RegistryValue Root="HKCU" Key="Software\ScreamRouter\Desktop\WebView2Settings" 
                     Name="UserDataFolder" Type="string" 
@@ -160,7 +160,7 @@
 
   <!-- Auto-start registry component -->
   <Fragment>
-    <Component Id="AutoStartRegistry" Directory="INSTALLFOLDER" Guid="a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d">
+    <Component Id="AutoStartRegistry" Directory="INSTALLFOLDER" Guid="67bbd84c-0c4b-11f0-bd78-000f5326d481">
       <RegistryValue Root="HKCU" Key="Software\Microsoft\Windows\CurrentVersion\Run"
                     Name="ScreamRouterDesktop" Type="string"
                     Value="[INSTALLFOLDER]ScreamRouterDesktop.exe" KeyPath="yes" />
@@ -169,7 +169,7 @@
   
   <!-- Application shortcuts for Start Menu -->
   <Fragment>
-    <Component Id="ApplicationShortcut" Directory="ApplicationProgramsFolder" Guid="b2c3d4e5-f6a5-5b9c-8d7e-6f5a4b3c2d1e">
+    <Component Id="ApplicationShortcut" Directory="ApplicationProgramsFolder" Guid="67dbf046-0c4b-11f0-8d16-000f5326d481">
       <Shortcut Id="ApplicationStartMenuShortcut" 
                 Name="ScreamRouter Desktop"
                 Description="Audio Routing Manager"
@@ -182,7 +182,7 @@
   
   <!-- Desktop shortcut -->
   <Fragment>
-    <Component Id="DesktopShortcut" Directory="DesktopFolder" Guid="c3d4e5f6-a5b9-6c8d-7e6f-5a4b3c2d1e0f">
+    <Component Id="DesktopShortcut" Directory="DesktopFolder" Guid="67f89732-0c4b-11f0-813c-000f5326d481">
       <Shortcut Id="ApplicationDesktopShortcut" 
                 Name="ScreamRouter Desktop"
                 Description="Audio Routing Manager"

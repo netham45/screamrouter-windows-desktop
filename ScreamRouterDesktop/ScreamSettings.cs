@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
+using System.IO;
 
 namespace ScreamRouterDesktop
 {
@@ -104,6 +105,7 @@ namespace ScreamRouterDesktop
 
         public void Save()
         {
+            Logger.Log("ScreamSettings", "Saving settings to registry");
             using var key = Registry.CurrentUser.CreateSubKey(@"Software\ScreamRouterDesktop");
             key.SetValue("SenderEnabled", SenderEnabled);
             key.SetValue("SenderIP", SenderIP);
@@ -115,6 +117,7 @@ namespace ScreamRouterDesktop
 
         public void Load()
         {
+            Logger.Log("ScreamSettings", "Loading settings from registry");
             using var key = Registry.CurrentUser.OpenSubKey(@"Software\ScreamRouterDesktop");
             if (key != null)
             {
@@ -129,6 +132,7 @@ namespace ScreamRouterDesktop
 
         public void StartProcesses()
         {
+            Logger.Log("ScreamSettings", "Starting processes");
             if (SenderEnabled && (senderProcess == null || senderProcess.HasExited))
             {
                 string args = $"{SenderIP} {SenderPort}";
@@ -146,6 +150,7 @@ namespace ScreamRouterDesktop
                 };
                 senderProcess.Start();
                 AssignProcessToJobObject(jobHandle, senderProcess.Handle);
+                Logger.Log("ScreamSettings", $"Started sender process with args: {args}");
             }
 
             if (ReceiverEnabled && (receiverProcess == null || receiverProcess.HasExited))
@@ -162,11 +167,13 @@ namespace ScreamRouterDesktop
                 };
                 receiverProcess.Start();
                 AssignProcessToJobObject(jobHandle, receiverProcess.Handle);
+                Logger.Log("ScreamSettings", $"Started receiver process with port: {ReceiverPort}");
             }
         }
 
         public void StopProcesses()
         {
+            Logger.Log("ScreamSettings", "Stopping processes");
             if (senderProcess != null && !senderProcess.HasExited)
             {
                 senderProcess.Kill();
@@ -184,6 +191,7 @@ namespace ScreamRouterDesktop
 
         public void RestartProcesses()
         {
+            Logger.Log("ScreamSettings", "Restarting processes");
             StopProcesses();
             StartProcesses();
         }

@@ -219,6 +219,11 @@ namespace ScreamRouterDesktop
                 {
                     Debug.WriteLine($"[UpdateManager] Verification error: {ex.GetType().Name}: {ex.Message}");
                     Debug.WriteLine($"[UpdateManager] Stack trace: {ex.StackTrace}");
+                    // Clean up the MSI file if signature verification fails
+                    if (File.Exists(tempPath))
+                    {
+                        try { File.Delete(tempPath); } catch { }
+                    }
                     throw;
                 }
 
@@ -243,13 +248,16 @@ namespace ScreamRouterDesktop
                         throw new Exception($"MSI installation failed with code {process.ExitCode}");
                     }
                 }
-                Debug.WriteLine("[UpdateManager] Update installed successfully");
+                Debug.WriteLine("[UpdateManager] Update installed successfully, restarting application");
 
-                System.Windows.Forms.MessageBox.Show(
-                    "Update installed successfully. Please restart the application.",
-                    "Update Complete",
-                    System.Windows.Forms.MessageBoxButtons.OK,
-                    System.Windows.Forms.MessageBoxIcon.Information);
+                // Get the path of the current executable
+                var exePath = Process.GetCurrentProcess().MainModule.FileName;
+                
+                // Start the application in a new process
+                Process.Start(exePath);
+                
+                // Exit the current process
+                Environment.Exit(0);
             }
             catch (Exception ex)
             {

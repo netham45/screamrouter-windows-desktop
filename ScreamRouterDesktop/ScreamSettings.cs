@@ -10,9 +10,9 @@ namespace ScreamRouterDesktop
         private Process? receiverProcess;
 
         public bool SenderEnabled { get; set; }
-        public string SenderIP { get; set; } = "239.255.77.77"; // Default multicast IP
-        public int SenderPort { get; set; } = 4010;
-        public bool SenderMulticast { get; set; } = true;
+        public string SenderIP { get; set; } = "127.0.0.1";
+        public int SenderPort { get; set; } = 16401;
+        public bool SenderMulticast { get; set; }
 
         public bool ReceiverEnabled { get; set; }
         public int ReceiverPort { get; set; } = 4010;
@@ -34,9 +34,9 @@ namespace ScreamRouterDesktop
             if (key != null)
             {
                 SenderEnabled = Convert.ToBoolean(key.GetValue("SenderEnabled", false));
-                SenderIP = (string?)key.GetValue("SenderIP", "239.255.77.77") ?? "239.255.77.77";
-                SenderPort = Convert.ToInt32(key.GetValue("SenderPort", 4010));
-                SenderMulticast = Convert.ToBoolean(key.GetValue("SenderMulticast", true));
+                SenderIP = (string?)key.GetValue("SenderIP", "127.0.0.1") ?? "127.0.0.1";
+                SenderPort = Convert.ToInt32(key.GetValue("SenderPort", 16401));
+                SenderMulticast = Convert.ToBoolean(key.GetValue("SenderMulticast", false));
                 ReceiverEnabled = Convert.ToBoolean(key.GetValue("ReceiverEnabled", false));
                 ReceiverPort = Convert.ToInt32(key.GetValue("ReceiverPort", 4010));
             }

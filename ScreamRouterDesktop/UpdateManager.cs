@@ -102,7 +102,7 @@ namespace ScreamRouterDesktop
                 Debug.WriteLine($"[UpdateManager] Current build date: {currentBuildDate}");
                 Debug.WriteLine($"[UpdateManager] Latest build date: {latestBuildDate}");
 
-                if (latestBuildDate > currentBuildDate || true)
+                if (latestBuildDate > currentBuildDate)
                 {
                     var msiUrl = latestMsi.GetProperty("browser_download_url").GetString();
                     if (CurrentMode == UpdateMode.AutomaticUpdate)

@@ -102,7 +102,7 @@ namespace ScreamRouterDesktop
                 Debug.WriteLine($"[UpdateManager] Current build date: {currentBuildDate}");
                 Debug.WriteLine($"[UpdateManager] Latest build date: {latestBuildDate}");
 
-                if (latestBuildDate > currentBuildDate)
+                if (latestBuildDate > currentBuildDate || true)
                 {
                     var msiUrl = latestMsi.GetProperty("browser_download_url").GetString();
                     if (CurrentMode == UpdateMode.AutomaticUpdate)
@@ -152,17 +152,75 @@ namespace ScreamRouterDesktop
                 Debug.WriteLine($"[UpdateManager] MSI downloaded to: {tempPath}");
 
                 // Verify signature by thumbprint
-                Debug.WriteLine("[UpdateManager] Verifying MSI signature");
-                var cert = new X509Certificate2(tempPath);
-                const string expectedThumbprint = "42C97DE7E98EDC2D9B49A1F338BCDEE5D07689A1";
-                Debug.WriteLine($"[UpdateManager] Certificate thumbprint found: {cert.Thumbprint}");
-                
-                if (cert.Thumbprint?.ToLower() != expectedThumbprint.ToLower())
+                Debug.WriteLine("[UpdateManager] Starting signature verification");
+                try
                 {
-                    Debug.WriteLine("[UpdateManager] Invalid MSI signature");
-                    throw new Exception($"Invalid MSI signature. Expected thumbprint: {expectedThumbprint}, Got: {cert.Thumbprint}");
+                    // Ensure file exists and is accessible
+                    if (!File.Exists(tempPath))
+                    {
+                        throw new Exception("Downloaded MSI file not found");
+                    }
+
+                    // Get file info to verify size and check if it's a valid MSI
+                    var fileInfo = new FileInfo(tempPath);
+                    Debug.WriteLine($"[UpdateManager] MSI file size: {fileInfo.Length} bytes");
+                    if (fileInfo.Length == 0)
+                    {
+                        throw new Exception("Downloaded MSI file is empty");
+                    }
+
+                    // Read first few bytes to verify it's an MSI
+                    byte[] header = new byte[8];
+                    using (var fs = new FileStream(tempPath, FileMode.Open, FileAccess.Read))
+                    {
+                        fs.Read(header, 0, header.Length);
+                    }
+                    Debug.WriteLine($"[UpdateManager] File header: {BitConverter.ToString(header)}");
+
+                    try
+                    {
+                        // Try to get the authenticode signature
+                        Debug.WriteLine("[UpdateManager] Attempting to read certificate...");
+                        var signer = X509Certificate.CreateFromSignedFile(tempPath);
+                        Debug.WriteLine($"[UpdateManager] Successfully read certificate. Subject: {signer.Subject}");
+                        
+                        // Get full certificate for thumbprint
+                        var cert = new X509Certificate2(signer);
+                        Debug.WriteLine($"[UpdateManager] Certificate details:");
+                        Debug.WriteLine($"  Subject: {cert.Subject}");
+                        Debug.WriteLine($"  Thumbprint: {cert.Thumbprint}");
+                        Debug.WriteLine($"  Valid from: {cert.NotBefore}");
+                        Debug.WriteLine($"  Valid to: {cert.NotAfter}");
+                        Debug.WriteLine($"  Serial number: {cert.SerialNumber}");
+                        Debug.WriteLine($"  Version: {cert.Version}");
+                        
+                        const string expectedThumbprint = "42C97DE7E98EDC2D9B49A1F338BCDEE5D07689A1";
+                        if (cert.Thumbprint?.ToLower() != expectedThumbprint.ToLower())
+                        {
+                            Debug.WriteLine("[UpdateManager] Invalid MSI signature - thumbprint mismatch");
+                            throw new Exception($"Invalid MSI signature. Expected thumbprint: {expectedThumbprint}, Got: {cert.Thumbprint}");
+                        }
+                        Debug.WriteLine("[UpdateManager] MSI signature verified successfully");
+                    }
+                    catch (System.Security.Cryptography.CryptographicException ex)
+                    {
+                        Debug.WriteLine($"[UpdateManager] Cryptographic error details:");
+                        Debug.WriteLine($"  Message: {ex.Message}");
+                        Debug.WriteLine($"  Stack trace: {ex.StackTrace}");
+                        if (ex.InnerException != null)
+                        {
+                            Debug.WriteLine($"  Inner exception: {ex.InnerException.Message}");
+                            Debug.WriteLine($"  Inner stack trace: {ex.InnerException.StackTrace}");
+                        }
+                        throw new Exception($"MSI signature verification failed: {ex.Message}");
+                    }
                 }
-                Debug.WriteLine("[UpdateManager] MSI signature verified successfully");
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[UpdateManager] Verification error: {ex.GetType().Name}: {ex.Message}");
+                    Debug.WriteLine($"[UpdateManager] Stack trace: {ex.StackTrace}");
+                    throw;
+                }
 
                 // Install the update
                 Debug.WriteLine("[UpdateManager] Starting MSI installation");

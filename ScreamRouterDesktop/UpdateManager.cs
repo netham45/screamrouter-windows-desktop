@@ -102,7 +102,12 @@ namespace ScreamRouterDesktop
                 Debug.WriteLine($"[UpdateManager] Current build date: {currentBuildDate}");
                 Debug.WriteLine($"[UpdateManager] Latest build date: {latestBuildDate}");
 
-                if (latestBuildDate > currentBuildDate)
+                // Only update if the new build is at least 15 minutes newer than current
+                var minimumTimeDiff = TimeSpan.FromMinutes(15);
+                var actualTimeDiff = latestBuildDate - currentBuildDate;
+                Debug.WriteLine($"[UpdateManager] Time difference between builds: {actualTimeDiff.TotalMinutes:F2} minutes");
+                
+                if (latestBuildDate > currentBuildDate && actualTimeDiff >= minimumTimeDiff)
                 {
                     var msiUrl = latestMsi.GetProperty("browser_download_url").GetString();
                     if (CurrentMode == UpdateMode.AutomaticUpdate)

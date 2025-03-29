@@ -93,10 +93,8 @@ jobs:
         # Build the MSI
         wix build -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext -o ScreamRouterDesktop-${{ steps.commit.outputs.shortcode }}.msi installer.wxs
         
-        # Sign the MSI with SHA1 for legacy compatibility
-        Start-Process -FilePath "C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe" -ArgumentList "sign", "/f", "../certificate.pfx", "/v", "/fd", "SHA1", "/tr", "http://timestamp.digicert.com", "/td", "SHA1", "ScreamRouterDesktop-${{ steps.commit.outputs.shortcode }}.msi" -NoNewWindow -Wait
         # Sign the MSI with SHA256
-        Start-Process -FilePath "C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe" -ArgumentList "sign", "/f", "../certificate.pfx", "/v", "/fd", "SHA256", "/tr", "http://timestamp.digicert.com", "/td", "SHA256", "/as", "ScreamRouterDesktop-${{ steps.commit.outputs.shortcode }}.msi" -NoNewWindow -Wait
+        Start-Process -FilePath "C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe" -ArgumentList "sign", "/f", "../certificate.pfx","/v", "/fd", "SHA256", "/tr", "http://timestamp.digicert.com", "/td", "SHA256", "/as", "ScreamRouterDesktop-${{ steps.commit.outputs.shortcode }}.msi" -NoNewWindow -Wait
         
         # Check if MSI was created and signed before trying to copy it
         if (Test-Path "ScreamRouterDesktop-${{ steps.commit.outputs.shortcode }}.msi") {

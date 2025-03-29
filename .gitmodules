@@ -1,0 +1,6 @@
+[submodule "windows-scream-sender"]
+	path = windows-scream-sender
+	url = https://github.com/netham45/windows-scream-sender.git
+[submodule "windows-scream-receiver"]
+	path = windows-scream-receiver
+	url = https://github.com/netham45/windows-scream-receiver.git

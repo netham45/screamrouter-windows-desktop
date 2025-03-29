@@ -5,6 +5,8 @@ using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 using System.Drawing;
 using System.Runtime.InteropServices;
+using System.Diagnostics;
+using System.Security.Cryptography.X509Certificates;
 
 namespace ScreamRouterDesktop
 {
@@ -14,9 +16,120 @@ namespace ScreamRouterDesktop
         private bool isWebViewInitialized = false;
         private Panel blurPanel;
         private string url;
+        private System.Windows.Forms.Timer mousePositionTimer;
+
+        private bool mouseDisabled = false;
 
         [DllImport("user32.dll")]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        // Win32 constants
+        private const int GWL_EXSTYLE = -20;
+        private const int WS_EX_LAYERED = 0x80000;
+        private const int LWA_ALPHA = 0x2;
+
+        // Win32 API imports
+        [DllImport("user32.dll")]
+        private static extern int GetWindowLong(IntPtr hwnd, int index);
+
+        [DllImport("user32.dll")]
+        private static extern int SetWindowLong(IntPtr hwnd, int index, int newStyle);
+
+        [DllImport("user32.dll")]
+        private static extern bool SetLayeredWindowAttributes(IntPtr hwnd, uint crKey, byte alpha, uint flags);
+
+        private void DisableMouse()
+        {
+
+            // Get current window style
+            int exStyle = GetWindowLong(this.Handle, GWL_EXSTYLE);
+
+            // Remove layered window style
+            SetWindowLong(this.Handle, GWL_EXSTYLE, exStyle  | WS_EX_LAYERED);
+
+            // Set the opacity
+            SetLayeredWindowAttributes(this.Handle, 0, 255, LWA_ALPHA);
+
+            this.TransparencyKey = Color.Transparent;
+
+            mouseDisabled = true;
+        }
+
+        private void EnableMouse()
+        {
+            // Get current window style
+            int exStyle = GetWindowLong(this.Handle, GWL_EXSTYLE);
+
+            // Remove layered window style
+            SetWindowLong(this.Handle, GWL_EXSTYLE, (exStyle & WS_EX_LAYERED) == WS_EX_LAYERED ? exStyle - WS_EX_LAYERED : 0);
+
+            // Set the opacity
+            SetLayeredWindowAttributes(this.Handle, 0, 255, LWA_ALPHA);
+
+            mouseDisabled = false;
+        }
+
+        private void InitializeMousePositionTimer()
+        {
+                        mousePositionTimer = new System.Windows.Forms.Timer();
+            mousePositionTimer.Interval = 50; // Poll every 50ms
+            mousePositionTimer.Tick += MousePositionTimer_Tick;
+            mousePositionTimer.Start();
+                    }
+
+        private bool IsPointInFormBounds(Point point)
+        {
+            return point.X >= this.Left && point.X < this.Right &&
+                   point.Y >= this.Top && point.Y < this.Bottom;
+        }
+
+        private async void MousePositionTimer_Tick(object? sender, EventArgs e)
+        {
+            if (webView == null || webView.CoreWebView2 == null || !this.Visible)
+            {
+                return;
+            }
+
+            Point mousePos = Control.MousePosition;
+                        
+            // First check if mouse is in form bounds
+            bool isInBounds = IsPointInFormBounds(mousePos);
+                        
+            if (isInBounds)
+            {
+                // Convert screen coordinates to client coordinates
+                Point clientPoint = this.PointToClient(mousePos);
+                                
+                // Apply DPI scaling to convert from logical to physical coordinates
+                float dpiScaling = GetScalingFactor();
+                int scaledX = (int)(clientPoint.X / dpiScaling);
+                int scaledY = (int)(clientPoint.Y / dpiScaling);
+                                
+                // Direct JavaScript check of element at scaled coordinates
+                string jsCheck = $"isPointOverBody({scaledX}, {scaledY})";
+                                
+                // Execute the JavaScript function and get result
+                string result = await webView.CoreWebView2.ExecuteScriptAsync(jsCheck);
+                                
+                // Parse result (true = over body, false = over element)
+                bool isOverBody = result.Contains("true");
+                
+                // Update mouse state based on element check
+                if (isOverBody && !mouseDisabled)
+                {
+                                        DisableMouse();
+                }
+                else if (!isOverBody && mouseDisabled)
+                {
+                                        EnableMouse();
+                }
+            }
+            else
+            {
+                            }
+            // If mouse is outside the form and mouse is disabled, do nothing
+            // If outside and mouse is enabled, also do nothing (handled by form's deactivate event)
+        }
 
         public WebInterfaceForm(string url)
         {
@@ -24,6 +137,7 @@ namespace ScreamRouterDesktop
             // Start with opacity 0 to mimic the hide/show behavior that works
             InitializeComponent();
             InitializeWebView();
+            InitializeMousePositionTimer();
             PositionFormBottomRight();
             this.Deactivate += WebInterfaceForm_Deactivate;
             this.Shown += WebInterfaceForm_Shown;
@@ -52,7 +166,7 @@ namespace ScreamRouterDesktop
             get
             {
                 CreateParams cp = base.CreateParams;
-                cp.ExStyle |= 0x00000020; // WS_EX_TRANSPARENT
+                cp.ExStyle |= 0x00000020 | (mouseDisabled ? 0x80000: 0); // WS_EX_TRANSPARENT
                 return cp;
             }
         }
@@ -61,6 +175,7 @@ namespace ScreamRouterDesktop
         {
             e.Graphics.Clear(Color.Transparent);
         }
+        
 
         private void InitializeComponent()
         {
@@ -136,7 +251,22 @@ namespace ScreamRouterDesktop
                 
                 // Handle new window requests to prevent address bar in popup windows
                 webView.CoreWebView2.NewWindowRequested += CoreWebView2_NewWindowRequested;
-
+                
+                // Inject JavaScript function to detect if a point is over the body (transparent) or another element
+                string jsCode = @"
+                    function isPointOverBody(x, y) {
+                        // Get the element at the specified point
+                        const element = document.elementFromPoint(x, y);
+                        
+                        // If there's no element or it's the body/html, it's over body
+                        const isOverBody = (!element || element === document.body || element === document.documentElement | element.id == 'root' || element.parentNode.id == 'root') && element.id != 'chakra-portal';
+                        
+                        return isOverBody;
+                    }
+                ";
+                
+                await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(jsCode);
+                                
                 // Navigate directly to the URL in app mode
                 webView.CoreWebView2.Navigate(url);
                 webView.Visible = true;
@@ -146,6 +276,8 @@ namespace ScreamRouterDesktop
                 MessageBox.Show($"Error initializing WebView2: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+        
+        // Direct JavaScript execution is used instead of message passing
 
         private float GetScalingFactor()
         {
@@ -165,6 +297,11 @@ namespace ScreamRouterDesktop
         private void WebInterfaceForm_Deactivate(object? sender, EventArgs e)
         {
             this.Hide();
+            // Pause the timer when the form is hidden
+            if (mousePositionTimer != null)
+            {
+                mousePositionTimer.Stop();
+            }
         }
         
         private void WebInterfaceForm_Shown(object? sender, EventArgs e)
@@ -172,6 +309,11 @@ namespace ScreamRouterDesktop
             if (webView != null && webView.CoreWebView2 != null)
             {
                 InvokeScript("DesktopMenuShow");
+            }
+            // Resume the timer when the form is shown
+            if (mousePositionTimer != null)
+            {
+                mousePositionTimer.Start();
             }
             SetForegroundWindow(this.Handle);
             this.Invalidate();
@@ -188,6 +330,13 @@ namespace ScreamRouterDesktop
 
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
+            // Stop and dispose the mouse position timer
+            if (mousePositionTimer != null)
+            {
+                mousePositionTimer.Stop();
+                mousePositionTimer.Dispose();
+            }
+            
             if (webView != null && webView.CoreWebView2 != null)
             {
                 InvokeScript("DesktopMenuHide");
@@ -206,6 +355,25 @@ namespace ScreamRouterDesktop
         public new void Show()
         {
             base.Show();
+            // Resume the timer when the form is shown
+            Debug.WriteLine("Show 1");
+            
+            // If the timer is null or not enabled, create a new one
+            if (mousePositionTimer == null || !mousePositionTimer.Enabled)
+            {
+                Debug.WriteLine("Creating new timer in Show()");
+                // The old timer might be stopped or disposed - create a fresh one
+                if (mousePositionTimer != null)
+                {
+                    mousePositionTimer.Dispose();
+                }
+                InitializeMousePositionTimer();
+            }
+            else
+            {
+                Debug.WriteLine("Timer already active");
+            }
+            
             SetForegroundWindow(this.Handle);
         }
         

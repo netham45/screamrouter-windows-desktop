@@ -16,6 +16,7 @@ namespace ScreamRouterDesktop
         private TextBox? urlTextBox;
         private TextBox? ipPortTextBox;
         private Button? saveButton;
+        private ScreamSettings screamSettings;
         private Button? openWebInterfaceButton;
         private Button? pinToStartButton;
         private Button? pinToNotificationAreaButton;
@@ -34,6 +35,7 @@ namespace ScreamRouterDesktop
         {
             InitializeComponent();
             updateManager = new UpdateManager();
+            screamSettings = new ScreamSettings();
             InitializeCustomComponents();
             LoadConfiguration();
             InitializeGlobalKeyboardHook();
@@ -153,12 +155,114 @@ namespace ScreamRouterDesktop
 
             mainPanel.Controls.Add(buttonsPanel);
 
+            // Scream Settings Section
+            FlowLayoutPanel screamPanel = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.TopDown,
+                AutoSize = true,
+                Margin = new Padding(0, padding, 0, padding),
+                WrapContents = false,
+                Dock = DockStyle.Fill
+            };
+
+            Label screamLabel = new Label
+            {
+                Text = "Scream Audio Settings:",
+                AutoSize = true,
+                Font = new Font(this.Font.FontFamily, 10, FontStyle.Bold),
+                Margin = new Padding(0, 0, 0, padding)
+            };
+            screamPanel.Controls.Add(screamLabel);
+
+            // Sender Settings
+            CheckBox senderEnabledCheckBox = new CheckBox
+            {
+                Text = "Enable Scream Sender",
+                AutoSize = true,
+                Margin = new Padding(0, 0, 0, padding/2)
+            };
+            senderEnabledCheckBox.CheckedChanged += (s, e) => {
+                screamSettings.SenderEnabled = senderEnabledCheckBox.Checked;
+                screamSettings.RestartProcesses();
+            };
+            screamPanel.Controls.Add(senderEnabledCheckBox);
+
+            Label senderIpLabel = new Label { Text = "Sender IP:", AutoSize = true };
+            TextBox senderIpTextBox = new TextBox { Width = (int)(200 * scaleFactor), Margin = new Padding(0, 0, padding, padding/2) };
+            FlowLayoutPanel senderIpPanel = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.LeftToRight,
+                AutoSize = true,
+                WrapContents = false
+            };
+            senderIpPanel.Controls.AddRange(new Control[] { senderIpLabel, senderIpTextBox });
+            screamPanel.Controls.Add(senderIpPanel);
+
+            Label senderPortLabel = new Label { Text = "Sender Port:", AutoSize = true };
+            NumericUpDown senderPortNumeric = new NumericUpDown 
+            { 
+                Minimum = 1,
+                Maximum = 65535,
+                Value = 4010,
+                Width = (int)(80 * scaleFactor),
+                Margin = new Padding(0, 0, padding, padding/2)
+            };
+            FlowLayoutPanel senderPortPanel = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.LeftToRight,
+                AutoSize = true,
+                WrapContents = false
+            };
+            senderPortPanel.Controls.AddRange(new Control[] { senderPortLabel, senderPortNumeric });
+            screamPanel.Controls.Add(senderPortPanel);
+
+            CheckBox multicastCheckBox = new CheckBox
+            {
+                Text = "Use Multicast",
+                AutoSize = true,
+                Margin = new Padding(0, 0, 0, padding)
+            };
+            screamPanel.Controls.Add(multicastCheckBox);
+
+            // Receiver Settings
+            CheckBox receiverEnabledCheckBox = new CheckBox
+            {
+                Text = "Enable Scream Receiver",
+                AutoSize = true,
+                Margin = new Padding(0, 0, 0, padding/2)
+            };
+            receiverEnabledCheckBox.CheckedChanged += (s, e) => {
+                screamSettings.ReceiverEnabled = receiverEnabledCheckBox.Checked;
+                screamSettings.RestartProcesses();
+            };
+            screamPanel.Controls.Add(receiverEnabledCheckBox);
+
+            Label receiverPortLabel = new Label { Text = "Receiver Port:", AutoSize = true };
+            NumericUpDown receiverPortNumeric = new NumericUpDown
+            {
+                Minimum = 1,
+                Maximum = 65535,
+                Value = 4010,
+                Width = (int)(80 * scaleFactor),
+                Margin = new Padding(0, 0, padding, padding)
+            };
+            FlowLayoutPanel receiverPortPanel = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.LeftToRight,
+                AutoSize = true,
+                WrapContents = false
+            };
+            receiverPortPanel.Controls.AddRange(new Control[] { receiverPortLabel, receiverPortNumeric });
+            screamPanel.Controls.Add(receiverPortPanel);
+
+            mainPanel.Controls.Add(screamPanel);
+
             // Update Mode Section
             FlowLayoutPanel updatePanel = new FlowLayoutPanel
             {
                 FlowDirection = FlowDirection.TopDown,
                 AutoSize = true,
-                Margin = new Padding(0, padding, 0, 0),
+                Margin = new Padding(0, 0, 0, padding),
                 WrapContents = false,
                 Dock = DockStyle.Fill
             };
@@ -350,6 +454,17 @@ namespace ScreamRouterDesktop
             {
                 updateManager.CurrentMode = (UpdateMode)updateModeComboBox.SelectedIndex;
             }
+
+            // Save Scream settings
+            screamSettings.SenderEnabled = Controls.Find("senderEnabledCheckBox", true).FirstOrDefault() is CheckBox senderCheckBox && senderCheckBox.Checked;
+            screamSettings.SenderIP = Controls.Find("senderIpTextBox", true).FirstOrDefault() is TextBox ipTextBox ? ipTextBox.Text : "239.255.77.77";
+            screamSettings.SenderPort = Controls.Find("senderPortNumeric", true).FirstOrDefault() is NumericUpDown senderPortNum ? (int)senderPortNum.Value : 4010;
+            screamSettings.SenderMulticast = Controls.Find("multicastCheckBox", true).FirstOrDefault() is CheckBox multicastBox && multicastBox.Checked;
+            screamSettings.ReceiverEnabled = Controls.Find("receiverEnabledCheckBox", true).FirstOrDefault() is CheckBox receiverCheckBox && receiverCheckBox.Checked;
+            screamSettings.ReceiverPort = Controls.Find("receiverPortNumeric", true).FirstOrDefault() is NumericUpDown receiverPortNum ? (int)receiverPortNum.Value : 4010;
+            
+            screamSettings.Save();
+            screamSettings.RestartProcesses();
         }
 
         private void LoadConfiguration()
@@ -360,6 +475,26 @@ namespace ScreamRouterDesktop
                 ipPortTextBox.Text = (string?)Registry.GetValue(@"HKEY_CURRENT_USER\Software\ScreamRouterDesktop", "IpPort", "") ?? "";
 
             if (string.IsNullOrEmpty(ipPortTextBox?.Text))
+                ResolveHostname();
+
+            // Load Scream settings
+            screamSettings.Load();
+            
+            if (Controls.Find("senderEnabledCheckBox", true).FirstOrDefault() is CheckBox senderCheckBox)
+                senderCheckBox.Checked = screamSettings.SenderEnabled;
+            if (Controls.Find("senderIpTextBox", true).FirstOrDefault() is TextBox ipTextBox)
+                ipTextBox.Text = screamSettings.SenderIP;
+            if (Controls.Find("senderPortNumeric", true).FirstOrDefault() is NumericUpDown senderPortNum)
+                senderPortNum.Value = screamSettings.SenderPort;
+            if (Controls.Find("multicastCheckBox", true).FirstOrDefault() is CheckBox multicastBox)
+                multicastBox.Checked = screamSettings.SenderMulticast;
+            if (Controls.Find("receiverEnabledCheckBox", true).FirstOrDefault() is CheckBox receiverCheckBox)
+                receiverCheckBox.Checked = screamSettings.ReceiverEnabled;
+            if (Controls.Find("receiverPortNumeric", true).FirstOrDefault() is NumericUpDown receiverPortNum)
+                receiverPortNum.Value = screamSettings.ReceiverPort;
+
+            // Start processes if enabled
+            screamSettings.StartProcesses();
             {
                 ResolveHostname();
             }

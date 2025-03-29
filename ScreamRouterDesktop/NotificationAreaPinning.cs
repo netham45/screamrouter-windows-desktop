@@ -70,7 +70,7 @@ namespace ScreamRouterDesktop
             
             notifyIcon.BalloonTipTitle = "Pin ScreamRouter to Notification Area";
             notifyIcon.BalloonTipText = "To keep this icon always visible:\n" +
-                "1. Click the up arrow (^) in the notification area to expand available icons\n" +
+                "1. Click the up arrow (^) in the notification area to expand it, the (^) switches to a (v)\n" +
                 "2. Drag the ScreamRouter Desktop icon to the (v) next to the notification area\n" +
                 "3. Or customize notification icons in taskbar settings";
                 
@@ -86,8 +86,8 @@ namespace ScreamRouterDesktop
             DialogResult result = MessageBox.Show(
                 "Would you like to keep the ScreamRouter icon visible in the notification area?\n\n" +
                 "To pin the icon:\n" +
-                "1. Click the up arrow (^) in the notification area\n" +
-                "2. Drag the ScreamRouter icon to the notification area, or\n" +
+                "1. Click the up arrow (^) in the notification area to expand it, the (^) switches to a (v)\n" +
+                "2. Drag the ScreamRouter Desktop icon to the (v) next to the notification area\n" +
                 "3. Click 'Yes' to open notification area settings where you can customize which icons appear",
                 "Pin to Notification Area",
                 MessageBoxButtons.YesNo,

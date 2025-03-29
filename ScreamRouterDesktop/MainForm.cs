@@ -73,6 +73,7 @@ namespace ScreamRouterDesktop
             // Start the form hidden
             this.WindowState = FormWindowState.Minimized;
             this.ShowInTaskbar = false;
+            this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.Hide();
         }
 
@@ -82,8 +83,8 @@ namespace ScreamRouterDesktop
             
             // Use DPI-aware sizing
             float scaleFactor = this.DeviceDpi / 96f;
-            int baseWidth = 600;
-            int baseHeight = 450; // Increased height for better spacing
+            int baseWidth = 525;
+            int baseHeight = 650; // Increased height for better spacing
             int padding = (int)(20 * scaleFactor);
             int sectionSpacing = (int)(30 * scaleFactor);
             
@@ -209,7 +210,7 @@ namespace ScreamRouterDesktop
             senderEnabledCheckBox.CheckedChanged += (s, e) => {};
             screamPanel.Controls.Add(senderEnabledCheckBox);
 
-            Label senderIpLabel = new Label { Text = "Sender IP:", AutoSize = true };
+            Label senderIpLabel = new Label { Text = "Destination IP:", AutoSize = true };
             senderIpTextBox = new TextBox 
             { 
                 Name = "senderIpTextBox",
@@ -226,7 +227,7 @@ namespace ScreamRouterDesktop
             senderIpPanel.Controls.AddRange(new Control[] { senderIpLabel, senderIpTextBox });
             screamPanel.Controls.Add(senderIpPanel);
 
-            Label senderPortLabel = new Label { Text = "Sender Port:", AutoSize = true };
+            Label senderPortLabel = new Label { Text = "Destination Port:", AutoSize = true };
             senderPortNumeric = new NumericUpDown 
             { 
                 Name = "senderPortNumeric",
@@ -267,7 +268,7 @@ namespace ScreamRouterDesktop
             receiverEnabledCheckBox.CheckedChanged += (s, e) => {};
             screamPanel.Controls.Add(receiverEnabledCheckBox);
 
-            Label receiverPortLabel = new Label { Text = "Receiver Port:", AutoSize = true };
+            Label receiverPortLabel = new Label { Text = "Inbound Port:", AutoSize = true };
             receiverPortNumeric = new NumericUpDown
             {
                 Name = "receiverPortNumeric",

@@ -17,11 +17,16 @@ namespace ScreamRouterDesktop
         private Panel blurPanel;
         private string url;
         private System.Windows.Forms.Timer mousePositionTimer;
+        private Point lastMousePosition = Point.Empty;
 
         private bool mouseDisabled = false;
 
         [DllImport("user32.dll")]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        // DwmGetColorizationColor is used to retrieve the Windows desktop accent color
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmGetColorizationColor(out uint colorization, out bool opaque);
 
         // Win32 constants
         private const int GWL_EXSTYLE = -20;
@@ -71,7 +76,7 @@ namespace ScreamRouterDesktop
 
         private void InitializeMousePositionTimer()
         {
-                        mousePositionTimer = new System.Windows.Forms.Timer();
+            mousePositionTimer = new System.Windows.Forms.Timer();
             mousePositionTimer.Interval = 50; // Poll every 50ms
             mousePositionTimer.Tick += MousePositionTimer_Tick;
             mousePositionTimer.Start();
@@ -91,6 +96,15 @@ namespace ScreamRouterDesktop
             }
 
             Point mousePos = Control.MousePosition;
+            
+            // Skip check if mouse hasn't moved since last check
+            if (lastMousePosition == mousePos)
+            {
+                return;
+            }
+            
+            // Update last position
+            lastMousePosition = mousePos;
                         
             // First check if mouse is in form bounds
             bool isInBounds = IsPointInFormBounds(mousePos);
@@ -124,9 +138,6 @@ namespace ScreamRouterDesktop
                                         EnableMouse();
                 }
             }
-            else
-            {
-                            }
             // If mouse is outside the form and mouse is disabled, do nothing
             // If outside and mouse is enabled, also do nothing (handled by form's deactivate event)
         }
@@ -185,7 +196,7 @@ namespace ScreamRouterDesktop
             // 
             // Scale according to DPI
             float dpiScaling = GetScalingFactor();
-            this.ClientSize = new System.Drawing.Size((int)(1010 * dpiScaling), (int)(610 * dpiScaling));
+            this.ClientSize = new System.Drawing.Size((int)(1010 * dpiScaling), (int)(950 * dpiScaling));
             this.FormBorderStyle = FormBorderStyle.None;
             this.Name = "WebInterfaceForm";
             this.ShowInTaskbar = false;
@@ -219,12 +230,12 @@ namespace ScreamRouterDesktop
                     await webView.EnsureCoreWebView2Async(cwv2Environment);
                     
                     // Completely disable all browser UI elements
-                    /*webView.CoreWebView2.Settings.AreDevToolsEnabled = false;
-                    webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
+                    webView.CoreWebView2.Settings.AreDevToolsEnabled = true;
+                    webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = true;
                     webView.CoreWebView2.Settings.AreDefaultScriptDialogsEnabled = false;
                     webView.CoreWebView2.Settings.IsBuiltInErrorPageEnabled = false;
                     webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
-                    webView.CoreWebView2.Settings.IsZoomControlEnabled = false;*/
+                    webView.CoreWebView2.Settings.IsZoomControlEnabled = false;
                     webView.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = true;
                     
                     // Create custom context to block all UI elements
@@ -232,12 +243,12 @@ namespace ScreamRouterDesktop
                     
                     isWebViewInitialized = true;
                 }
-/*                webView.CoreWebView2.Settings.IsZoomControlEnabled = false;
-                webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
+                webView.CoreWebView2.Settings.IsZoomControlEnabled = false;
+                webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = true;
                 webView.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = true;
-                webView.CoreWebView2.Settings.AreDevToolsEnabled = false;
+                webView.CoreWebView2.Settings.AreDevToolsEnabled = true;
                 webView.CoreWebView2.Settings.AreDefaultScriptDialogsEnabled = false;
-                webView.CoreWebView2.Settings.IsStatusBarEnabled = false;*/
+                webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
                 
                 // Create a custom environment to hide the browser UI
                 var environment = webView.CoreWebView2.Environment;
@@ -306,25 +317,45 @@ namespace ScreamRouterDesktop
         
         private void WebInterfaceForm_Shown(object? sender, EventArgs e)
         {
-            if (webView != null && webView.CoreWebView2 != null)
-            {
-                InvokeScript("DesktopMenuShow");
-            }
-            // Resume the timer when the form is shown
-            if (mousePositionTimer != null)
-            {
-                mousePositionTimer.Start();
-            }
-            SetForegroundWindow(this.Handle);
-            this.Invalidate();
-            this.Update();
+
         }
 
         public async void InvokeScript(string functionName)
         {
+            Debug.WriteLine("Invoking Script " + functionName);
             if (webView != null && webView.CoreWebView2 != null)
             {
-                await webView.CoreWebView2.ExecuteScriptAsync($"{functionName}()");
+                if (functionName == "DesktopMenuShow")
+                {
+                    // Check if Windows accent color is enabled
+                    var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+                    bool accentColorEnabled = key != null && (int)key.GetValue("ColorPrevalence", 0) == 1;
+
+                    if (accentColorEnabled)
+                    {
+                        // Get the Windows colorization color
+                        uint colorizationColor;
+                        bool opaque;
+                        DwmGetColorizationColor(out colorizationColor, out opaque);
+                        
+                        // Extract RGB components
+                        int r = (int)((colorizationColor >> 16) & 0xFF);
+                        int g = (int)((colorizationColor >> 8) & 0xFF);
+                        int b = (int)(colorizationColor & 0xFF);
+
+                        // Pass the color to JavaScript
+                        await webView.CoreWebView2.ExecuteScriptAsync($"{functionName}({r}, {g}, {b})");
+                    }
+                    else
+                    {
+                        // Call without color parameters if accent color is disabled
+                        await webView.CoreWebView2.ExecuteScriptAsync($"{functionName}(0, 0, 0)");
+                    }
+                }
+                else
+                {
+                    await webView.CoreWebView2.ExecuteScriptAsync($"{functionName}()");
+                }
             }
         }
 
@@ -349,12 +380,31 @@ namespace ScreamRouterDesktop
             else
             {
                 base.OnFormClosing(e);
+         
             }
         }
 
+        public new void Hide()
+        {
+            base.Hide();
+            InvokeScript("DesktopMenuHide");
+        }
+        
         public new void Show()
         {
             base.Show();
+
+            if (webView != null && webView.CoreWebView2 != null)
+            {
+                InvokeScript("DesktopMenuShow");
+            }
+            // Resume the timer when the form is shown
+            if (mousePositionTimer != null)
+            {
+                mousePositionTimer.Start();
+            }
+            SetForegroundWindow(this.Handle);
+
             // Resume the timer when the form is shown
             Debug.WriteLine("Show 1");
             
@@ -408,14 +458,32 @@ namespace ScreamRouterDesktop
                 var env = await CoreWebView2Environment.CreateAsync(null, userDataFolder, envOptions);
                 await newWebView.EnsureCoreWebView2Async(env);
                 
-                // Disable all browser UI elements
-                /*newWebView.CoreWebView2.Settings.IsStatusBarEnabled = false;
-                newWebView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
-                newWebView.CoreWebView2.Settings.AreDevToolsEnabled = false;
+                // Configure browser settings
+                newWebView.CoreWebView2.Settings.IsStatusBarEnabled = false;
+                newWebView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = true;
+                newWebView.CoreWebView2.Settings.AreDevToolsEnabled = true;
                 newWebView.CoreWebView2.Settings.IsBuiltInErrorPageEnabled = false;
                 newWebView.CoreWebView2.Settings.AreDefaultScriptDialogsEnabled = false;
-                newWebView.CoreWebView2.Settings.IsZoomControlEnabled = false;*/
-                newWebView.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = true;  // Leave refresh and dev console enabled
+                newWebView.CoreWebView2.Settings.IsZoomControlEnabled = false;
+                newWebView.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = true;  // Enable all browser keyboard shortcuts including F11
+
+                // Enable F11 fullscreen support
+                newWebView.CoreWebView2.ContainsFullScreenElementChanged += (s, args) =>
+                {
+                    newForm.Invoke((MethodInvoker)delegate
+                    {
+                        if (newWebView.CoreWebView2.ContainsFullScreenElement)
+                        {
+                            newForm.FormBorderStyle = FormBorderStyle.None;
+                            newForm.WindowState = FormWindowState.Maximized;
+                        }
+                        else
+                        {
+                            newForm.FormBorderStyle = FormBorderStyle.Sizable;
+                            newForm.WindowState = FormWindowState.Normal;
+                        }
+                    });
+                };
 
                 // Add event handler for title changes
                 newWebView.CoreWebView2.DocumentTitleChanged += (sender, e) =>

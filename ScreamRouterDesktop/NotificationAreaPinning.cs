@@ -88,7 +88,8 @@ namespace ScreamRouterDesktop
                 "To pin the icon:\n" +
                 "1. Click the up arrow (^) in the notification area to expand it, the (^) switches to a (v)\n" +
                 "2. Drag the ScreamRouter Desktop icon to the (v) next to the notification area\n" +
-                "3. Click 'Yes' to open notification area settings where you can customize which icons appear",
+                "- Or -\n" +
+                "Click 'Yes' to open notification area settings where you can customize which icons appear",
                 "Pin to Notification Area",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question);

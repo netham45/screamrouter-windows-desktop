@@ -339,12 +339,13 @@ namespace ScreamRouterDesktop
                         DwmGetColorizationColor(out colorizationColor, out opaque);
                         
                         // Extract RGB components
+                        int a = (int)((colorizationColor >> 24) & 0xFF);
                         int r = (int)((colorizationColor >> 16) & 0xFF);
                         int g = (int)((colorizationColor >> 8) & 0xFF);
                         int b = (int)(colorizationColor & 0xFF);
 
                         // Pass the color to JavaScript
-                        await webView.CoreWebView2.ExecuteScriptAsync($"{functionName}({r}, {g}, {b})");
+                        await webView.CoreWebView2.ExecuteScriptAsync($"{functionName}({r}, {g}, {b}, {a})");
                     }
                     else
                     {

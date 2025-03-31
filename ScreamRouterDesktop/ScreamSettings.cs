@@ -11,6 +11,7 @@ namespace ScreamRouterDesktop
         private Process? senderProcess;
         private Process? receiverProcess;
         private IntPtr jobHandle;
+        private ZeroconfService? zeroconfService;
 
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
         static extern IntPtr CreateJobObject(IntPtr lpJobAttributes, string? name);
@@ -85,6 +86,9 @@ namespace ScreamRouterDesktop
             {
                 Marshal.FreeHGlobal(extendedInfoPtr);
             }
+            
+            // Initialize ZeroconfService
+            zeroconfService = new ZeroconfService();
         }
 
         ~ScreamSettings()
@@ -93,6 +97,8 @@ namespace ScreamRouterDesktop
             {
                 CloseHandle(jobHandle);
             }
+            
+            zeroconfService?.Dispose();
         }
 
         public bool SenderEnabled { get; set; }
@@ -102,6 +108,16 @@ namespace ScreamRouterDesktop
 
         public bool ReceiverEnabled { get; set; }
         public int ReceiverPort { get; set; } = 4010;
+
+        // Method to get the current audio settings from ZeroconfService
+        public ZeroconfService.AudioSettings? GetCurrentAudioSettings()
+        {
+            if (zeroconfService != null)
+            {
+                return zeroconfService.GetCurrentAudioSettings();
+            }
+            return null;
+        }
 
         public void Save()
         {
@@ -168,6 +184,13 @@ namespace ScreamRouterDesktop
                 receiverProcess.Start();
                 AssignProcessToJobObject(jobHandle, receiverProcess.Handle);
                 Logger.Log("ScreamSettings", $"Started receiver process with port: {ReceiverPort}");
+                
+                // Start ZeroconfService when receiver is enabled
+                if (zeroconfService != null)
+                {
+                    zeroconfService.Start();
+                    Logger.Log("ScreamSettings", "Started ZeroconfService for mDNS discovery");
+                }
             }
         }
 
@@ -186,6 +209,13 @@ namespace ScreamRouterDesktop
                 receiverProcess.Kill();
                 receiverProcess.Dispose();
                 receiverProcess = null;
+                
+                // Stop ZeroconfService when receiver is stopped
+                if (zeroconfService != null)
+                {
+                    zeroconfService.Stop();
+                    Logger.Log("ScreamSettings", "Stopped ZeroconfService");
+                }
             }
         }
 

@@ -3,10 +3,12 @@ using System.IO;
 using System.Windows.Forms;
 using System.Net;
 using System.Drawing;
+using System.Linq;
 using Microsoft.Win32;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using System.Text;
+using System.Net.Sockets;
 
 namespace ScreamRouterDesktop
 {
@@ -32,6 +34,12 @@ namespace ScreamRouterDesktop
         private CheckBox? multicastCheckBox;
         private CheckBox? receiverEnabledCheckBox;
         private NumericUpDown? receiverPortNumeric;
+
+        // Controls for Audio Info
+        private Label? bitDepthLabel;
+        private Label? sampleRateLabel;
+        private Label? channelsLabel;
+        private Label? channelLayoutLabel;
 
         [DllImport("shell32.dll", SetLastError = true)]
         static extern void SetCurrentProcessExplicitAppUserModelID([MarshalAs(UnmanagedType.LPWStr)] string AppID);
@@ -84,7 +92,7 @@ namespace ScreamRouterDesktop
             // Use DPI-aware sizing
             float scaleFactor = this.DeviceDpi / 96f;
             int baseWidth = 525;
-            int baseHeight = 650; // Increased height for better spacing
+            int baseHeight = 950; // Increased height for better spacing
             int padding = (int)(20 * scaleFactor);
             int sectionSpacing = (int)(30 * scaleFactor);
             
@@ -95,12 +103,13 @@ namespace ScreamRouterDesktop
                 Dock = DockStyle.Fill,
                 Padding = new Padding(padding),
                 ColumnCount = 1,
-                RowCount = 4, // Reduced to match our sections
+                RowCount = 5, // Increased to match our sections
                 AutoSize = true
             };
             mainPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             
             // Set consistent row heights
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             mainPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             mainPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             mainPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -291,6 +300,73 @@ namespace ScreamRouterDesktop
             screamGroupBox.Controls.Add(screamPanel);
             mainPanel.Controls.Add(screamGroupBox, 0, 2);
 
+            // Audio Info Section
+            GroupBox audioInfoGroupBox = new GroupBox
+            {
+                Text = "Current Audio Configuration",
+                Dock = DockStyle.Fill,
+                AutoSize = true,
+                Padding = new Padding(padding),
+                Margin = new Padding(0, 0, 0, sectionSpacing)
+            };
+
+            FlowLayoutPanel audioInfoPanel = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.TopDown,
+                AutoSize = true,
+                WrapContents = false,
+                Dock = DockStyle.Fill
+            };
+
+            Label audioInfoLabel = new Label
+            {
+                Text = "The following audio settings will be advertised via mDNS when the receiver is enabled:",
+                AutoSize = true,
+                Font = new Font(this.Font.FontFamily, 9, FontStyle.Regular),
+                Margin = new Padding(0, 0, 0, padding/2)
+            };
+            audioInfoPanel.Controls.Add(audioInfoLabel);
+
+            // Create labels for each audio setting
+            bitDepthLabel = new Label
+            {
+                Name = "bitDepthLabel",
+                Text = "Bit Depth: -- (Windows returns audio in 32-bit regardless of config)",
+                AutoSize = true,
+                Margin = new Padding(0, 0, 0, padding/4)
+            };
+            audioInfoPanel.Controls.Add(bitDepthLabel);
+
+            sampleRateLabel = new Label
+            {
+                Name = "sampleRateLabel",
+                Text = "Sample Rate: --",
+                AutoSize = true,
+                Margin = new Padding(0, 0, 0, padding/4)
+            };
+            audioInfoPanel.Controls.Add(sampleRateLabel);
+
+            channelsLabel = new Label
+            {
+                Name = "channelsLabel",
+                Text = "Channels: --",
+                AutoSize = true,
+                Margin = new Padding(0, 0, 0, padding/4)
+            };
+            audioInfoPanel.Controls.Add(channelsLabel);
+
+            channelLayoutLabel = new Label
+            {
+                Name = "channelLayoutLabel",
+                Text = "Channel Layout: --",
+                AutoSize = true,
+                Margin = new Padding(0, 0, 0, padding/4)
+            };
+            audioInfoPanel.Controls.Add(channelLayoutLabel);
+
+            audioInfoGroupBox.Controls.Add(audioInfoPanel);
+            mainPanel.Controls.Add(audioInfoGroupBox, 0, 3);
+
             // Update Mode Section
             GroupBox updateGroupBox = new GroupBox
             {
@@ -334,10 +410,46 @@ namespace ScreamRouterDesktop
             updatePanel.Controls.Add(updateModeComboBox);
 
             updateGroupBox.Controls.Add(updatePanel);
-            mainPanel.Controls.Add(updateGroupBox, 0, 3);
+            mainPanel.Controls.Add(updateGroupBox, 0, 4);
 
             this.Controls.Add(mainPanel);
             InitializeNotifyIcon();
+        }
+
+        private void UpdateAudioInfo()
+        {
+            // Get the current audio settings from ZeroconfService
+            var audioSettings = screamSettings?.GetCurrentAudioSettings();
+            
+            if (audioSettings != null)
+            {
+                if (bitDepthLabel != null)
+                    bitDepthLabel.Text = $"Bit Depth: {audioSettings.BitDepth} bits";
+                
+                if (sampleRateLabel != null)
+                    sampleRateLabel.Text = $"Sample Rate: {audioSettings.SampleRate} Hz";
+                
+                if (channelsLabel != null)
+                    channelsLabel.Text = $"Channels: {audioSettings.Channels}";
+                
+                if (channelLayoutLabel != null)
+                    channelLayoutLabel.Text = $"Channel Layout: {audioSettings.ChannelLayout}";
+            }
+            else
+            {
+                // No audio settings available
+                if (bitDepthLabel != null)
+                    bitDepthLabel.Text = "Bit Depth: --";
+                
+                if (sampleRateLabel != null)
+                    sampleRateLabel.Text = "Sample Rate: --";
+                
+                if (channelsLabel != null)
+                    channelsLabel.Text = "Channels: --";
+                
+                if (channelLayoutLabel != null)
+                    channelLayoutLabel.Text = "Channel Layout: --";
+            }
         }
 
         private void InitializeNotifyIcon()
@@ -435,6 +547,7 @@ namespace ScreamRouterDesktop
 
         public void ShowSettings()
         {
+            UpdateAudioInfo();
             this.Show();
             this.WindowState = FormWindowState.Normal;
             this.ShowInTaskbar = true;
@@ -509,6 +622,9 @@ namespace ScreamRouterDesktop
             
             screamSettings.Save();
             screamSettings.RestartProcesses();
+            
+            // Update audio info display
+            UpdateAudioInfo();
         }
 
         private void LoadConfiguration()
@@ -539,6 +655,9 @@ namespace ScreamRouterDesktop
 
             // Start processes if enabled
             screamSettings.StartProcesses();
+            
+            // Update audio info display
+            UpdateAudioInfo();
             
             // Create the WebInterfaceForm on load
             string url = urlTextBox?.Text ?? "";
@@ -577,6 +696,7 @@ namespace ScreamRouterDesktop
             globalKeyboardHook = new GlobalKeyboardHook();
             globalKeyboardHook.MediaKeyPressed += GlobalKeyboardHook_MediaKeyPressed;
         }
+
 
         private void GlobalKeyboardHook_MediaKeyPressed(object? sender, MediaKeyEventArgs e)
         {
@@ -627,6 +747,7 @@ namespace ScreamRouterDesktop
             }
             else
             {
+                // No need to clean up ZeroconfService here as it's managed by ScreamSettings
                 base.OnFormClosing(e);
             }
         }

@@ -267,12 +267,9 @@ namespace ScreamRouterDesktop
                 string jsCode = @"
                     function isPointOverBody(x, y) {
                         // Get the element at the specified point
-                        const element = document.elementFromPoint(x, y);
-                        
+                        const element = document.elementFromPoint(x, y);                        
                         // If there's no element or it's the body/html, it's over body
-                        const isOverBody = (!element || element === document.body || element === document.documentElement | element.id == 'root' || element.parentNode.id == 'root') && element.id != 'chakra-portal';
-                        
-                        return isOverBody;
+                        return (!element || element === document.body || element === document.documentElement | element.id == 'root' || element.parentNode.id == 'root') && element.id != 'chakra-portal' || element.classList.contains('chakra-modal__overlay') || element.classList.contains('chakra-modal__content-container') || element.classList.contains('chakra-modal__body');
                     }
                 ";
                 

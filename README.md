@@ -2,7 +2,9 @@
 
 ScreamRouter Windows Desktop is a C# application that provides a desktop interface for controlling ScreamRouter, an audio management system.
 
-![ScreamRouter Windows Desktop Screenshot](/screenshot.png)
+![ScreamRouter Windows Desktop Screenshot 1](/menu.png)
+
+![ScreamRouter Windows Desktop Screenshot 2](/screenshot.png)
 
 
 ## Features

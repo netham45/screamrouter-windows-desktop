@@ -1,0 +1,69 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/ScreamRouterDesktop.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary"
+            ],
+            "problemMatcher": "$msCompile",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "killbuild",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "kill",
+                "build",
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "rebuild",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "kill",
+                "clean",
+                "build"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "clean",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "clean",
+                "${workspaceFolder}/ScreamRouterDesktop.csproj"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "kill",
+            "command": "cmd",
+            "type": "process",
+            "args": [
+                "/c",
+                "taskkill /F /IM ScreamRouterDesktop.exe || exit /b 0"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "never"
+            },
+            "runOptions": {
+                "runOn": "folderOpen"
+            },
+            "isBackground": true,
+            "promptOnClose": false,
+            "dependsOn": []
+        }
+    ]
+}

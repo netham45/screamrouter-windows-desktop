@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.Runtime.InteropServices;
 using System.Collections.Generic;
 using System.Linq;
-using System.Management.Automation;
+
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using Makaretu.Dns;
@@ -162,10 +162,10 @@ namespace ScreamRouterDesktop
 
                 // Start listening for audio settings queries
                 Task.Run(() => ListenForAudioSettingsQueries(cancellationTokenSource.Token));
-                
+
                 // Start a raw UDP packet dumper for debugging
                 Task.Run(() => DumpUdpPackets(cancellationTokenSource.Token));
-                
+
                 // Start a dedicated unicast listener
                 Task.Run(() => ListenForUnicastQueries(cancellationTokenSource.Token));
 
@@ -178,7 +178,7 @@ namespace ScreamRouterDesktop
                 Stop();
             }
         }
-        
+
         private async Task ListenForUnicastQueries(CancellationToken cancellationToken)
         {
             try
@@ -187,57 +187,57 @@ namespace ScreamRouterDesktop
                 {
                     // Set socket options
                     socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-                    
+
                     // Bind to the mDNS port on any address
                     socket.Bind(new IPEndPoint(IPAddress.Any, MDNS_PORT));
-                    
+
                     Trace.WriteLine("Unicast listener started on port 5353");
-                    
+
                     // Buffer for receiving data
                     byte[] buffer = new byte[4096];
-                    
+
                     while (!cancellationToken.IsCancellationRequested)
                     {
                         try
                         {
                             // Set up endpoint for receiving
                             EndPoint remoteEP = new IPEndPoint(IPAddress.Any, 0);
-                            
+
                             // Receive data
                             int bytesRead = socket.ReceiveFrom(buffer, ref remoteEP);
                             byte[] data = new byte[bytesRead];
                             Array.Copy(buffer, data, bytesRead);
-                            
+
                             IPEndPoint senderEP = (IPEndPoint)remoteEP;
-                            
+
                             Trace.WriteLine($"UNICAST: Received {bytesRead} bytes from {senderEP}");
                             Trace.WriteLine($"UNICAST: Hex dump: {BitConverter.ToString(data)}");
-                            
+
                             // Process the DNS query
                             try
                             {
                                 var message = new Message();
                                 message.Read(data, 0, data.Length);
-                                
+
                                 Trace.WriteLine($"UNICAST: Parsed as DNS message - ID: {message.Id}, Questions: {message.Questions.Count}");
-                                
+
                                 // Process each question
                                 foreach (var question in message.Questions)
                                 {
                                     Trace.WriteLine($"UNICAST: Question - Name: {question.Name}, Type: {question.Type}, Class: {question.Class}");
-                                    
+
                                     // Check if this is a query for our settings
                                     string questionName = question.Name.ToString();
                                     int questionType = (int)question.Type;
-                                    
+
                                     bool isSettingsQuery = questionName.Equals(MDNS_SETTINGS_SERVICE_NAME, StringComparison.OrdinalIgnoreCase) ||
-                                                          questionName.Equals($"{MDNS_SETTINGS_SERVICE_NAME}.", StringComparison.OrdinalIgnoreCase);
-                                    
+                                                           questionName.Equals($"{MDNS_SETTINGS_SERVICE_NAME}.", StringComparison.OrdinalIgnoreCase);
+
                                     // Handle TXT record queries for settings
                                     if (isSettingsQuery && questionType == DNS_TYPE_TXT)
                                     {
                                         Trace.WriteLine($"UNICAST: Received settings TXT query from {senderEP}");
-                                        
+
                                         // Get current audio settings
                                         var audioSettings = GetCurrentAudioSettings();
                                         if (audioSettings == null)
@@ -245,7 +245,7 @@ namespace ScreamRouterDesktop
                                             Trace.WriteLine("UNICAST: Could not retrieve audio settings");
                                             continue;
                                         }
-                                        
+
                                         // Create a response message
                                         var response = new Message
                                         {
@@ -258,10 +258,10 @@ namespace ScreamRouterDesktop
                                             RA = false,    // Recursion not available
                                             Z = 0          // Reserved bits should be zero
                                         };
-                                        
+
                                         // Copy the question
                                         response.Questions.Add(question);
-                                        
+
                                         // Format settings as key=value pairs separated by semicolons
                                         string settingsText = string.Join(";",
                                             $"bit_depth={audioSettings.BitDepth}",
@@ -269,9 +269,9 @@ namespace ScreamRouterDesktop
                                             $"channels={audioSettings.Channels}",
                                             $"channel_layout={audioSettings.ChannelLayout}"
                                         );
-                                        
+
                                         Trace.WriteLine($"UNICAST: Sending TXT record with settings: {settingsText}");
-                                        
+
                                         // Add a TXT record with our settings
                                         var txtRecord = new TXTRecord
                                         {
@@ -280,11 +280,11 @@ namespace ScreamRouterDesktop
                                             TTL = TimeSpan.FromMinutes(5) // 5 minute TTL
                                         };
                                         response.Answers.Add(txtRecord);
-                                        
+
                                         // Send the response
                                         byte[] responseData = response.ToByteArray();
                                         socket.SendTo(responseData, senderEP);
-                                        
+
                                         Trace.WriteLine($"UNICAST: Sent TXT record response to {senderEP}");
                                     }
                                 }
@@ -293,7 +293,7 @@ namespace ScreamRouterDesktop
                             {
                                 Trace.WriteLine($"UNICAST: Error parsing DNS message: {ex.Message}");
                             }
-                            
+
                             // Small delay to prevent CPU hogging
                             await Task.Delay(10, cancellationToken);
                         }
@@ -304,7 +304,7 @@ namespace ScreamRouterDesktop
                         catch (Exception ex)
                         {
                             Trace.WriteLine($"UNICAST: Error receiving packet: {ex.Message}");
-                            
+
                             // Small delay to prevent CPU hogging in case of repeated errors
                             await Task.Delay(100, cancellationToken);
                         }
@@ -316,7 +316,7 @@ namespace ScreamRouterDesktop
                 Trace.WriteLine($"Error in unicast listener: {ex.Message}");
             }
         }
-        
+
         private async Task DumpUdpPackets(CancellationToken cancellationToken)
         {
             try
@@ -326,15 +326,15 @@ namespace ScreamRouterDesktop
                 {
                     // Configure socket options
                     dumpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-                    
+
                     // Bind to the mDNS port on any address to receive unicast queries
                     dumpClient.Client.Bind(new IPEndPoint(IPAddress.Any, MDNS_PORT));
-                    
+
                     // Join the multicast group to receive multicast queries
                     dumpClient.JoinMulticastGroup(IPAddress.Parse("224.0.0.251"));
-                    
+
                     Trace.WriteLine("UDP packet dumper started - listening for both unicast and multicast");
-                    
+
                     while (!cancellationToken.IsCancellationRequested)
                     {
                         try
@@ -342,18 +342,18 @@ namespace ScreamRouterDesktop
                             var result = await dumpClient.ReceiveAsync(cancellationToken);
                             var data = result.Buffer;
                             var sender = result.RemoteEndPoint;
-                            
+
                             Trace.WriteLine($"RAW UDP: Received {data.Length} bytes from {sender}");
                             Trace.WriteLine($"RAW UDP: Hex dump: {BitConverter.ToString(data)}");
-                            
+
                             // Try to parse as DNS message
                             try
                             {
                                 var message = new Message();
                                 message.Read(data, 0, data.Length);
-                                
+
                                 Trace.WriteLine($"RAW UDP: Parsed as DNS message - ID: {message.Id}, Questions: {message.Questions.Count}");
-                                
+
                                 foreach (var q in message.Questions)
                                 {
                                     Trace.WriteLine($"RAW UDP: Question - Name: {q.Name}, Type: {q.Type}, Class: {q.Class}");
@@ -421,16 +421,16 @@ namespace ScreamRouterDesktop
                     // Check if this is a query for our hostname or settings
                     string questionName = question.Name.ToString();
                     int questionType = (int)question.Type;
-                    
+
                     Trace.WriteLine($"Detailed query info - Name: {questionName}, Type: {questionType}, DNS_TYPE_TXT: {DNS_TYPE_TXT}");
                     Trace.WriteLine($"Raw question data: {BitConverter.ToString(question.ToByteArray())}");
                     Trace.WriteLine($"Message ID: {e.Message.Id}, Flags: {e.Message.QR},{e.Message.Opcode},{e.Message.AA},{e.Message.TC},{e.Message.RD},{e.Message.RA},{e.Message.Z}");
-                    
+
                     bool isHostnameQuery = questionName.Equals(MDNS_SERVICE_NAME, StringComparison.OrdinalIgnoreCase) ||
-                                          questionName.Equals($"{MDNS_SERVICE_NAME}.", StringComparison.OrdinalIgnoreCase);
+                                           questionName.Equals($"{MDNS_SERVICE_NAME}.", StringComparison.OrdinalIgnoreCase);
                     bool isSettingsQuery = questionName.Equals(MDNS_SETTINGS_SERVICE_NAME, StringComparison.OrdinalIgnoreCase) ||
-                                          questionName.Equals($"{MDNS_SETTINGS_SERVICE_NAME}.", StringComparison.OrdinalIgnoreCase);
-                    
+                                           questionName.Equals($"{MDNS_SETTINGS_SERVICE_NAME}.", StringComparison.OrdinalIgnoreCase);
+
                     // Handle A record queries for both hostname and settings service
                     if ((isHostnameQuery || isSettingsQuery) && questionType == DNS_TYPE_A)
                     {
@@ -479,7 +479,7 @@ namespace ScreamRouterDesktop
 
                         // Get the IP address for the interface that would be used to reach the remote endpoint
                         IPAddress localIp = GetLocalIPForRemote(remoteEndPoint.Address);
-                        
+
                         // Get current audio settings
                         var audioSettings = GetCurrentAudioSettings();
                         if (audioSettings == null)
@@ -487,7 +487,7 @@ namespace ScreamRouterDesktop
                             Trace.WriteLine("Could not retrieve audio settings");
                             return;
                         }
-                        
+
                         Trace.WriteLine($"Responding with audio settings: bit_depth={audioSettings.BitDepth}, " +
                                        $"sample_rate={audioSettings.SampleRate}, channels={audioSettings.Channels}, " +
                                        $"channel_layout={audioSettings.ChannelLayout}");
@@ -528,7 +528,7 @@ namespace ScreamRouterDesktop
                             Strings = new List<string> { settingsText },
                             TTL = TimeSpan.FromMinutes(5) // 5 minute TTL
                         };
-                        
+
                         // Debug the TXT record format
                         Trace.WriteLine($"TXT record details - Name: {txtRecord.Name}, TTL: {txtRecord.TTL}, Strings count: {txtRecord.Strings.Count}");
                         foreach (var str in txtRecord.Strings)
@@ -583,33 +583,7 @@ namespace ScreamRouterDesktop
         {
             try
             {
-                // Use PowerShell to get the correct IP address
-                using (PowerShell ps = PowerShell.Create())
-                {
-                    // Run the find-netroute command to get the interface that would be used to reach the remote address
-                    ps.AddCommand("Find-NetRoute")
-                        .AddParameter("RemoteIPAddress", remoteAddress.ToString());
-
-                    Collection<PSObject> results = ps.Invoke();
-
-                    if (results.Count > 0)
-                    {
-                        // Get the IPAddress property from the first result
-                        foreach (PSObject result in results)
-                        {
-                            if (result.Properties["IPAddress"] != null)
-                            {
-                                string ipAddressString = result.Properties["IPAddress"].Value.ToString();
-                                if (IPAddress.TryParse(ipAddressString, out IPAddress ipAddress))
-                                {
-                                    return ipAddress;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Fall back to the socket method if PowerShell fails
+                // Use the socket method to determine the local IP that would be used to reach the remote address
                 using (Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, 0))
                 {
                     socket.Connect(remoteAddress, 65530);
@@ -619,13 +593,7 @@ namespace ScreamRouterDesktop
             }
             catch
             {
-                // Fall back to the socket method if PowerShell fails
-                using (Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, 0))
-                {
-                    socket.Connect(remoteAddress, 65530);
-                    IPEndPoint? endPoint = socket.LocalEndPoint as IPEndPoint;
-                    return endPoint?.Address ?? IPAddress.Loopback;
-                }
+                return IPAddress.Loopback;
             }
         }
 

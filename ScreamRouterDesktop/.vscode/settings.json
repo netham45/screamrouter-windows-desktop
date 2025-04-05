@@ -1,0 +1,13 @@
+{
+    "dotnet.defaultSolution": "ScreamRouterDesktop.csproj",
+    "omnisharp.useModernNet": true,
+    "omnisharp.enableRoslynAnalyzers": true,
+    "omnisharp.enableEditorConfigSupport": true,
+    "editor.formatOnSave": true,
+    "editor.formatOnType": true,
+    "csharp.format.enable": true,
+    "files.exclude": {
+        "**/bin": false,
+        "**/obj": false
+    }
+}

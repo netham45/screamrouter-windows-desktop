@@ -114,6 +114,8 @@
         <File Id="WebView2CoreDLL" Source="Microsoft.Web.WebView2.Core.dll" />
         <File Id="WebView2WinFormsDLL" Source="Microsoft.Web.WebView2.WinForms.dll" />
         <File Id="WebView2WpfDLL" Source="Microsoft.Web.WebView2.Wpf.dll" />
+        <File Id="MakaretuDnsDLL" Source="Makaretu.Dns.dll" />
+        <File Id="MakaretuDnsMulticastDLL" Source="Makaretu.Dns.Multicast.dll" />
       </Component>
     </ComponentGroup>
   </Fragment>

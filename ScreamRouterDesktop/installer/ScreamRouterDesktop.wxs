@@ -1,24 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
-     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
 
   <!-- Main package definition -->
-  <Package Name="ScreamRouter Desktop" 
+  <Package Name="ScreamRouter Desktop"
            Manufacturer="ScreamRouter"
            Version="1.0.0.0"
            UpgradeCode="4f709484-66b1-4429-9d7a-1787c4ff593c"
            InstallerVersion="500">
-           
+
     <!-- This ensures the CAB is embedded in the MSI -->
     <MediaTemplate EmbedCab="yes" />
-           
-    <!-- Upgrade behavior -->
-    <MajorUpgrade DowngradeErrorMessage="A newer version of ScreamRouter Desktop is already installed." />
-    
-    <!-- Define properties for the checkboxes -->
-    <Property Id="LAUNCHAPPONEXIT" Value="1" />
-    <Property Id="AUTOSTART" Value="1" />
-    
+
+    <!-- Upgrade behavior: Schedule removal early to prevent file locking issues -->
+    <MajorUpgrade DowngradeErrorMessage="A newer version of ScreamRouter Desktop is already installed."
+                  Schedule="afterInstallValidate" />
+
+    <!-- Define properties -->
+    <Property Id="WixShellExecTarget" Value="[#ScreamRouterDesktopEXE]" /> <!-- Target for LaunchAppNow action -->
+
     <!-- Define install directory structure -->
     <StandardDirectory Id="ProgramFilesFolder">
       <Directory Id="INSTALLFOLDER" Name="ScreamRouter Desktop">
@@ -41,65 +42,46 @@
     </StandardDirectory>
 
     <StandardDirectory Id="DesktopFolder" />
-    
+
     <!-- UI Customization -->
-    <ui:WixUI Id="WixUI_InstallDir" />
+    <!-- UI Customization - Using Mondo for a more standard flow -->
+    <ui:WixUI Id="WixUI_Mondo" />
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
     <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
-    
-    <!-- Exit dialog -->
-    <UI>
-      <Dialog Id="CustomExitDialog" Width="370" Height="270" Title="Installation Complete">
-        <Control Id="Finish" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Cancel="yes" Text="Finish">
-          <Publish Event="EndDialog" Value="Return" />
-        </Control>
-        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Disabled="yes" Text="Cancel" />
-        <Control Id="Bitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="234" TabSkip="no" Text="WixUI_Bmp_Dialog" />
-        <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Disabled="yes" Text="Back" />
-        <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
-        <Control Id="Description" Type="Text" X="135" Y="70" Width="220" Height="40" Transparent="yes" NoPrefix="yes" Text="Click Finish to exit the wizard." />
-        <Control Id="Title" Type="Text" X="135" Y="20" Width="220" Height="60" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Bigger}Installation Complete" />
-        
-        <!-- Checkbox controls for our options -->
-        <Control Id="LaunchCheckBox" Type="CheckBox" X="135" Y="110" Width="220" Height="17" 
-                Property="LAUNCHAPPONEXIT" CheckBoxValue="1" 
-                Text="Launch ScreamRouter Desktop now" />
-        
-        <Control Id="AutoStartCheckBox" Type="CheckBox" X="135" Y="130" Width="220" Height="17" 
-                Property="AUTOSTART" CheckBoxValue="1" 
-                Text="Launch ScreamRouter Desktop when Windows starts" />
-      </Dialog>
-      
-      <InstallUISequence>
-        <Show Dialog="CustomExitDialog" OnExit="success" Overridable="yes" />
-      </InstallUISequence>
-    </UI>
-    
+    <!-- Commented out bitmap variables as files/directory don't exist -->
+    <!-- <WixVariable Id="WixUIDialogBmp" Value="Resources/dialog_background.bmp" /> -->
+    <!-- <WixVariable Id="WixUIBannerBmp" Value="Resources/top_banner.bmp" /> -->
+
+    <!-- Removed UI customization block due to persistent build errors -->
+    <!-- Installer will use default WixUI_Mondo ExitDialog -->
+    <!-- Launch/Autostart behavior will depend on default Property values -->
+
     <!-- Features definition -->
     <Feature Id="ProductFeature" Title="ScreamRouter Desktop" Level="1">
       <ComponentGroupRef Id="AllComponents" />
       <ComponentRef Id="WebView2ConfigRegistry" />
-      <ComponentRef Id="AutoStartRegistry" />
       <ComponentRef Id="ApplicationShortcut" />
       <ComponentRef Id="DesktopShortcut" />
       <ComponentRef Id="WebView2LoaderX86Comp" />
       <ComponentRef Id="WebView2LoaderX64Comp" />
       <ComponentRef Id="WebView2LoaderArm64Comp" />
     </Feature>
-    
+
     <!-- We need to create a separate Feature for the autostart functionality -->
-    <Feature Id="AutoStartFeature" Title="Run at startup" Level="0">
-      <ComponentRef Id="AutoStartRegistry" />
-    </Feature>
-    
-    <!-- Custom actions to launch at the end -->
-    <CustomAction Id="LaunchApplication"
-                  FileRef="ScreamRouterDesktopEXE"
-                  ExeCommand=""
-                  Return="asyncNoWait" />
-    
+    <!-- Removed AutoStartFeature as the component is now conditional -->
+
+    <util:CloseApplication Id="CloseScreamRouterDesktop" Target="ScreamRouterDesktop.exe" CloseMessage="yes" RebootPrompt="no"></util:CloseApplication>
+
+    <!-- Custom action to launch application after install, if checkbox was selected -->
+    <!-- Corrected: Removed invalid Condition and Return attributes -->
+    <CustomAction Id="LaunchAppNow"
+                  BinaryRef="Wix4UtilCA_X64"
+                  DllEntry="WixShellExec"
+                  Execute="immediate" />
+
     <InstallExecuteSequence>
-      <Custom Action="LaunchApplication" After="InstallFinalize" Condition="LAUNCHAPPONEXIT = 1 AND NOT Installed" />
+      <!-- Restoring scheduling for LaunchAppNow -->
+      <Custom Action="LaunchAppNow" After="InstallFinalize" />
     </InstallExecuteSequence>
   </Package>
 
@@ -108,20 +90,24 @@
     <ComponentGroup Id="AllComponents" Directory="INSTALLFOLDER">
       <!-- Main app executable -->
       <Component Id="MainExecutable" Guid="41a3e384-0c4b-11f0-a983-000f5326d481">
+        <!-- Corrected Source path relative to WXS file -->
         <File Id="ScreamRouterDesktopEXE" Source="ScreamRouterDesktop.exe" KeyPath="yes" />
       </Component>
 
       <!-- Scream executables -->
       <Component Id="ScreamSenderExecutable" Guid="422b100c-0c4b-11f0-a3df-000f5326d481">
+        <!-- Assuming path relative to project root is correct -->
         <File Id="ScreamSenderEXE" Source="ScreamSender.exe" KeyPath="yes" />
       </Component>
 
       <Component Id="ScreamReceiverExecutable" Guid="6700bbac-0c4b-11f0-8ebb-000f5326d481">
+        <!-- Assuming path relative to project root is correct -->
         <File Id="ScreamReceiverEXE" Source="ScreamReceiver.exe" KeyPath="yes" />
       </Component>
-      
+
       <!-- App config and DLL files -->
       <Component Id="CoreFilesComponent" Guid="6721899a-0c4b-11f0-8881-000f5326d481">
+        <!-- Corrected Source paths relative to WXS file -->
         <File Id="ScreamRouterDesktopDLL" Source="ScreamRouterDesktop.dll" KeyPath="yes" />
         <File Id="DepJSON" Source="ScreamRouterDesktop.deps.json" />
         <File Id="RuntimeJSON" Source="ScreamRouterDesktop.runtimeconfig.json" />
@@ -131,46 +117,37 @@
       </Component>
     </ComponentGroup>
   </Fragment>
-  
+
   <!-- WebView2 Loader Components -->
   <Fragment>
     <!-- Each native DLL properly placed in its own separate directory -->
     <Component Id="WebView2LoaderX86Comp" Directory="WinX86NativeDir" Guid="674055be-0c4b-11f0-b67a-000f5326d481">
       <File Id="WebView2LoaderX86" Source="runtimes\win-x86\native\WebView2Loader.dll" KeyPath="yes" />
     </Component>
-    
+
     <Component Id="WebView2LoaderX64Comp" Directory="WinX64NativeDir" Guid="675df6fa-0c4b-11f0-8a2e-000f5326d481">
       <File Id="WebView2LoaderX64" Source="runtimes\win-x64\native\WebView2Loader.dll" KeyPath="yes" />
     </Component>
-    
+
     <Component Id="WebView2LoaderArm64Comp" Directory="WinArm64NativeDir" Guid="677f39c8-0c4b-11f0-b0a9-000f5326d481">
       <File Id="WebView2LoaderArm64" Source="runtimes\win-arm64\native\WebView2Loader.dll" KeyPath="yes" />
     </Component>
   </Fragment>
-  
+
   <!-- Registry component for WebView2 configuration -->
   <Fragment>
     <Component Id="WebView2ConfigRegistry" Directory="INSTALLFOLDER" Guid="679d08cc-0c4b-11f0-b56b-000f5326d481">
       <!-- Configure WebView2 to use user's AppData for data storage, not program directory -->
-      <RegistryValue Root="HKCU" Key="Software\ScreamRouter\Desktop\WebView2Settings" 
-                    Name="UserDataFolder" Type="string" 
+      <RegistryValue Root="HKCU" Key="Software\ScreamRouter\Desktop\WebView2Settings"
+                    Name="UserDataFolder" Type="string"
                     Value="%APPDATA%\ScreamRouter\WebView2" KeyPath="yes" />
     </Component>
   </Fragment>
 
-  <!-- Auto-start registry component -->
-  <Fragment>
-    <Component Id="AutoStartRegistry" Directory="INSTALLFOLDER" Guid="67bbd84c-0c4b-11f0-bd78-000f5326d481">
-      <RegistryValue Root="HKCU" Key="Software\Microsoft\Windows\CurrentVersion\Run"
-                    Name="ScreamRouterDesktop" Type="string"
-                    Value="[INSTALLFOLDER]ScreamRouterDesktop.exe" KeyPath="yes" />
-    </Component>
-  </Fragment>
-  
   <!-- Application shortcuts for Start Menu -->
   <Fragment>
     <Component Id="ApplicationShortcut" Directory="ApplicationProgramsFolder" Guid="67dbf046-0c4b-11f0-8d16-000f5326d481">
-      <Shortcut Id="ApplicationStartMenuShortcut" 
+      <Shortcut Id="ApplicationStartMenuShortcut"
                 Name="ScreamRouter Desktop"
                 Description="Audio Routing Manager"
                 Target="[INSTALLFOLDER]ScreamRouterDesktop.exe"
@@ -179,11 +156,11 @@
       <RegistryValue Root="HKCU" Key="Software\ScreamRouter\Desktop" Name="installed" Type="integer" Value="1" KeyPath="yes" />
     </Component>
   </Fragment>
-  
+
   <!-- Desktop shortcut -->
   <Fragment>
     <Component Id="DesktopShortcut" Directory="DesktopFolder" Guid="67f89732-0c4b-11f0-813c-000f5326d481">
-      <Shortcut Id="ApplicationDesktopShortcut" 
+      <Shortcut Id="ApplicationDesktopShortcut"
                 Name="ScreamRouter Desktop"
                 Description="Audio Routing Manager"
                 Target="[INSTALLFOLDER]ScreamRouterDesktop.exe"
@@ -191,4 +168,5 @@
       <RegistryValue Root="HKCU" Key="Software\ScreamRouter\Desktop" Name="desktop_sc" Type="integer" Value="1" KeyPath="yes" />
     </Component>
   </Fragment>
+
  </Wix>

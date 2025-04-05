@@ -23,6 +23,7 @@ namespace ScreamRouterDesktop
         private Button? pinToStartButton;
         private Button? pinToNotificationAreaButton;
         private ComboBox? updateModeComboBox;
+        private CheckBox? startAtBootCheckBox;
         private WebInterfaceForm? webInterfaceForm;
         private GlobalKeyboardHook? globalKeyboardHook;
         private UpdateManager updateManager;
@@ -53,7 +54,17 @@ namespace ScreamRouterDesktop
             updateManager = new UpdateManager();
             screamSettings = new ScreamSettings();
             InitializeCustomComponents();
+
+            // Check if start at boot option has been prompted before
+            if (!screamSettings.HasStartAtBootBeenPrompted())
+            {
+                screamSettings.ShowStartAtBootDialog();
+            }
+
+            // Load configuration after the start at boot dialog to ensure UI reflects the latest settings
             LoadConfiguration();
+
+
             InitializeGlobalKeyboardHook();
             SetCurrentProcessExplicitAppUserModelID("ScreamRouterDesktop");
             CreateJumpList();
@@ -367,17 +378,17 @@ namespace ScreamRouterDesktop
             audioInfoGroupBox.Controls.Add(audioInfoPanel);
             mainPanel.Controls.Add(audioInfoGroupBox, 0, 3);
 
-            // Update Mode Section
-            GroupBox updateGroupBox = new GroupBox
+            // Application Settings Section
+            GroupBox appSettingsGroupBox = new GroupBox
             {
-                Text = "Update Settings",
+                Text = "Application Settings",
                 Dock = DockStyle.Fill,
                 AutoSize = true,
                 Padding = new Padding(padding),
                 Margin = new Padding(0)
             };
 
-            FlowLayoutPanel updatePanel = new FlowLayoutPanel
+            FlowLayoutPanel appSettingsPanel = new FlowLayoutPanel
             {
                 FlowDirection = FlowDirection.TopDown,
                 AutoSize = true,
@@ -392,7 +403,7 @@ namespace ScreamRouterDesktop
                 Font = new Font(this.Font.FontFamily, 9, FontStyle.Regular),
                 Margin = new Padding(0, 0, 0, padding/2)
             };
-            updatePanel.Controls.Add(updateLabel);
+            appSettingsPanel.Controls.Add(updateLabel);
 
             updateModeComboBox = new ComboBox
             {
@@ -407,10 +418,20 @@ namespace ScreamRouterDesktop
             });
             updateModeComboBox.SelectedIndex = (int)updateManager.CurrentMode;
             updateModeComboBox.SelectedIndexChanged += UpdateModeComboBox_SelectedIndexChanged;
-            updatePanel.Controls.Add(updateModeComboBox);
+            appSettingsPanel.Controls.Add(updateModeComboBox);
 
-            updateGroupBox.Controls.Add(updatePanel);
-            mainPanel.Controls.Add(updateGroupBox, 0, 4);
+            // Add start at boot checkbox
+            startAtBootCheckBox = new CheckBox
+            {
+                Text = "Start application when Windows starts",
+                AutoSize = true,
+                Margin = new Padding(0, padding, 0, 0)
+            };
+            startAtBootCheckBox.CheckedChanged += StartAtBootCheckBox_CheckedChanged;
+            appSettingsPanel.Controls.Add(startAtBootCheckBox);
+
+            appSettingsGroupBox.Controls.Add(appSettingsPanel);
+            mainPanel.Controls.Add(appSettingsGroupBox, 0, 4);
 
             this.Controls.Add(mainPanel);
             InitializeNotifyIcon();
@@ -603,6 +624,14 @@ namespace ScreamRouterDesktop
             }
         }
 
+        private void StartAtBootCheckBox_CheckedChanged(object? sender, EventArgs e)
+        {
+            if (startAtBootCheckBox != null)
+            {
+                screamSettings.StartAtBoot = startAtBootCheckBox.Checked;
+            }
+        }
+
         private void SaveConfiguration()
         {
             Registry.SetValue(@"HKEY_CURRENT_USER\Software\ScreamRouterDesktop", "Url", urlTextBox?.Text ?? "");
@@ -619,6 +648,10 @@ namespace ScreamRouterDesktop
             screamSettings.SenderMulticast = multicastCheckBox?.Checked ?? false;
             screamSettings.ReceiverEnabled = receiverEnabledCheckBox?.Checked ?? false;
             screamSettings.ReceiverPort = (int)(receiverPortNumeric?.Value ?? 4010);
+            if (startAtBootCheckBox != null)
+            {
+                screamSettings.StartAtBoot = startAtBootCheckBox.Checked;
+            }
             
             screamSettings.Save();
             screamSettings.RestartProcesses();
@@ -652,6 +685,10 @@ namespace ScreamRouterDesktop
                 receiverEnabledCheckBox.Checked = screamSettings.ReceiverEnabled;
             if (receiverPortNumeric != null)
                 receiverPortNumeric.Value = screamSettings.ReceiverPort;
+            
+            // Update the start at boot checkbox based on the actual Windows startup registry
+            if (startAtBootCheckBox != null)
+                startAtBootCheckBox.Checked = screamSettings.StartAtBoot;
 
             // Start processes if enabled
             screamSettings.StartProcesses();

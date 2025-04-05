@@ -152,7 +152,21 @@ namespace ScreamRouterDesktop
             PositionFormBottomRight();
             this.Deactivate += WebInterfaceForm_Deactivate;
             this.Shown += WebInterfaceForm_Shown;
+        }
 
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                CreateParams cp = base.CreateParams;
+                cp.ExStyle |= 0x00000020 | (mouseDisabled ? 0x80000: 0); // WS_EX_TRANSPARENT
+                return cp;
+            }
+        }
+
+        protected override void OnPaintBackground(PaintEventArgs e)
+        {
+            e.Graphics.Clear(Color.Transparent);
             // Workaround for transparency bugging out
             this.Opacity = 0;
             System.Threading.Timer timer = null;
@@ -170,21 +184,6 @@ namespace ScreamRouterDesktop
                         timer?.Dispose();
                     }));
                 }, null, 5, System.Threading.Timeout.Infinite);
-        }
-
-        protected override CreateParams CreateParams
-        {
-            get
-            {
-                CreateParams cp = base.CreateParams;
-                cp.ExStyle |= 0x00000020 | (mouseDisabled ? 0x80000: 0); // WS_EX_TRANSPARENT
-                return cp;
-            }
-        }
-
-        protected override void OnPaintBackground(PaintEventArgs e)
-        {
-            e.Graphics.Clear(Color.Transparent);
         }
         
 

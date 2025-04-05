@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
 using System.IO;
+using System.Windows.Forms;
 
 namespace ScreamRouterDesktop
 {
@@ -109,6 +110,25 @@ namespace ScreamRouterDesktop
         public bool ReceiverEnabled { get; set; }
         public int ReceiverPort { get; set; } = 4010;
 
+        // StartAtBoot property that directly checks/sets the Windows startup registry
+        public bool StartAtBoot 
+        { 
+            get
+            {
+                // Check if the application is in the Windows startup registry
+                using var key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run");
+                return key != null && key.GetValue("ScreamRouterDesktop") != null;
+            }
+            set
+            {
+                // This will be applied through SetStartAtBoot method when Save() is called
+                _startAtBootValue = value;
+            }
+        }
+
+        // Private field to hold the value temporarily until Save() is called
+        private bool _startAtBootValue;
+
         // Method to get the current audio settings from ZeroconfService
         public ZeroconfService.AudioSettings? GetCurrentAudioSettings()
         {
@@ -129,6 +149,32 @@ namespace ScreamRouterDesktop
             key.SetValue("SenderMulticast", SenderMulticast);
             key.SetValue("ReceiverEnabled", ReceiverEnabled);
             key.SetValue("ReceiverPort", ReceiverPort);
+            
+            // Apply the start at boot setting to the OS
+            SetStartAtBoot(_startAtBootValue);
+        }
+        
+        // Set the application to start at boot in the OS
+        private void SetStartAtBoot(bool enable)
+        {
+            Logger.Log("ScreamSettings", $"Setting start at boot to {enable}");
+            string appPath = Application.ExecutablePath;
+            using var key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true);
+            
+            if (key != null)
+            {
+                if (enable)
+                {
+                    key.SetValue("ScreamRouterDesktop", appPath);
+                }
+                else
+                {
+                    if (key.GetValue("ScreamRouterDesktop") != null)
+                    {
+                        key.DeleteValue("ScreamRouterDesktop", false);
+                    }
+                }
+            }
         }
 
         public void Load()
@@ -143,6 +189,40 @@ namespace ScreamRouterDesktop
                 SenderMulticast = Convert.ToBoolean(key.GetValue("SenderMulticast", false));
                 ReceiverEnabled = Convert.ToBoolean(key.GetValue("ReceiverEnabled", false));
                 ReceiverPort = Convert.ToInt32(key.GetValue("ReceiverPort", 4010));
+                
+                // StartAtBoot is now read directly from Windows startup registry in the property getter
+                _startAtBootValue = StartAtBoot;
+            }
+        }
+
+        // Check if the start at boot option has been prompted before
+        public bool HasStartAtBootBeenPrompted()
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(@"Software\ScreamRouterDesktop");
+            return key != null && key.GetValue("StartAtBootPrompted") != null;
+        }
+
+        // Mark that the start at boot option has been prompted
+        public void SetStartAtBootPrompted()
+        {
+            using var key = Registry.CurrentUser.CreateSubKey(@"Software\ScreamRouterDesktop");
+            key.SetValue("StartAtBootPrompted", true);
+        }
+
+        // Show the start at boot dialog
+        public void ShowStartAtBootDialog()
+        {
+            if (!HasStartAtBootBeenPrompted())
+            {
+                DialogResult result = MessageBox.Show(
+                    "Would you like ScreamRouter Desktop to start automatically when you log in?",
+                    "Start at Boot",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
+                
+                _startAtBootValue = result == DialogResult.Yes;
+                SetStartAtBootPrompted();
+                Save();
             }
         }
 

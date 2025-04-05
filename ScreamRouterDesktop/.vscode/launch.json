@@ -6,7 +6,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "killbuild",
-            "program": "${workspaceFolder}/bin/Debug/net6.0-windows/ScreamRouterDesktop.exe",
+            "program": "${workspaceFolder}/bin/Debug/net8.0-windows/ScreamRouterDesktop.exe",
             "args": [],
             "cwd": "${workspaceFolder}",
             "console": "internalConsole",

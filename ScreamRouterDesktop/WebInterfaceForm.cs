@@ -437,11 +437,11 @@ namespace ScreamRouterDesktop
                 case "Transcription":
                     TransparentForm transparentNewForm = new TransparentForm()
                     {
-                        Width = 1600,
-                        Height = 300,
+                        Width = Screen.PrimaryScreen.Bounds.Width * .8,
+                        Height = 600,
                         StartPosition = FormStartPosition.Manual,
-                        Left = (Screen.PrimaryScreen.Bounds.Width / 2) - (1600 / 2),
-                        Top = Screen.PrimaryScreen.Bounds.Height - 300 - 100,
+                        Left = Screen.PrimaryScreen.Bounds.Width * .1,
+                        Top = Screen.PrimaryScreen.Bounds.Height - 600 - 100,
                         AutoScaleMode = AutoScaleMode.None,
                         FormBorderStyle = FormBorderStyle.None,
                         BackColor = Color.Transparent,

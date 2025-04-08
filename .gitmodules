@@ -4,3 +4,6 @@
 [submodule "windows-scream-receiver"]
 	path = windows-scream-receiver
 	url = https://github.com/netham45/windows-scream-receiver.git
+[submodule "win-screamrouter-per-process-sender"]
+	path = win-screamrouter-per-process-sender
+	url = https://github.com/netham45/win-screamrouter-per-process-sender

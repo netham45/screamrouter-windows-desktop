@@ -29,16 +29,35 @@ namespace ScreamRouterDesktop
         private UpdateManager updateManager;
 
         // Controls for Scream settings
-        private CheckBox? senderEnabledCheckBox;
+        private RadioButton? standardSenderRadioButton;
+        private RadioButton? perProcessSenderRadioButton;
         private TextBox? senderIpTextBox;
         private NumericUpDown? senderPortNumeric;
         private CheckBox? multicastCheckBox;
+        private TextBox? perProcessSenderIpTextBox;
+        private NumericUpDown? perProcessSenderPortNumeric;
+        private Label? perProcessSenderCompatibilityLabel;
         private CheckBox? receiverEnabledCheckBox;
         private NumericUpDown? receiverPortNumeric;
 
         // Controls for Audio Info
         private Label? bitDepthLabel;
         private Label? sampleRateLabel;
+        // Method to check if the system meets the minimum requirements for per-process sender
+        private bool IsCompatibleWithPerProcessSender()
+        {
+            // Windows 11 check (build 22000+)
+            if (Environment.OSVersion.Version.Major >= 10 && Environment.OSVersion.Version.Build >= 22000)
+                return true;
+            
+            // Windows 10 build 20348+ check
+            if (Environment.OSVersion.Version.Major == 10 && Environment.OSVersion.Version.Build >= 20348)
+                return true;
+            
+            return false;
+        }
+
+
         private Label? channelsLabel;
         private Label? channelLayoutLabel;
 
@@ -220,15 +239,24 @@ namespace ScreamRouterDesktop
             };
 
             // Sender Settings
-            senderEnabledCheckBox = new CheckBox
+            Label senderModeLabel = new Label
             {
-                Name = "senderEnabledCheckBox",
-                Text = "Enable Scream Sender",
+                Text = "Sender Mode:",
                 AutoSize = true,
-                Margin = new Padding(0, 0, 0, padding/2)
+                Margin = new Padding(0, 0, 0, padding/4)
             };
-            senderEnabledCheckBox.CheckedChanged += (s, e) => {};
-            screamPanel.Controls.Add(senderEnabledCheckBox);
+            screamPanel.Controls.Add(senderModeLabel);
+            
+            // Standard Sender Radio Button
+            standardSenderRadioButton = new RadioButton
+            {
+                Name = "standardSenderRadioButton",
+                Text = "Standard Sender",
+                AutoSize = true,
+                Margin = new Padding(0, 0, 0, padding/4)
+            };
+            standardSenderRadioButton.CheckedChanged += StandardSenderRadioButton_CheckedChanged;
+            screamPanel.Controls.Add(standardSenderRadioButton);
 
             Label senderIpLabel = new Label { Text = "Destination IP:", AutoSize = true };
             senderIpTextBox = new TextBox 
@@ -276,6 +304,76 @@ namespace ScreamRouterDesktop
             };
             multicastCheckBox.CheckedChanged += (s, e) => {};
             screamPanel.Controls.Add(multicastCheckBox);
+
+            // Per-Process Sender Settings
+            perProcessSenderRadioButton = new RadioButton
+            {
+                Name = "perProcessSenderRadioButton",
+                Text = "Per-Process Sender (Only works with ScreamRouter)",
+                AutoSize = true,
+                Margin = new Padding(0, 0, 0, padding/4)
+            };
+            perProcessSenderRadioButton.CheckedChanged += PerProcessSenderRadioButton_CheckedChanged;
+            screamPanel.Controls.Add(perProcessSenderRadioButton);
+
+            // Check if system is compatible with per-process sender
+            bool isCompatible = IsCompatibleWithPerProcessSender();
+            perProcessSenderRadioButton.Enabled = isCompatible;
+            
+            // Per-Process Sender IP Setting
+            Label perProcessIpLabel = new Label { Text = "Destination IP:", AutoSize = true };
+            perProcessSenderIpTextBox = new TextBox
+            {
+                Name = "perProcessSenderIpTextBox",
+                Width = (int)(200 * scaleFactor),
+                Margin = new Padding(0, 0, padding, padding/2),
+                Text = "127.0.0.1",
+                Enabled = isCompatible
+            };
+            perProcessSenderIpTextBox.TextChanged += (s, e) => {};
+            FlowLayoutPanel perProcessIpPanel = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.LeftToRight,
+                AutoSize = true,
+                WrapContents = false
+            };
+            perProcessIpPanel.Controls.AddRange(new Control[] { perProcessIpLabel, perProcessSenderIpTextBox });
+            screamPanel.Controls.Add(perProcessIpPanel);
+            
+            // Per-Process Sender Port Setting
+            Label perProcessPortLabel = new Label { Text = "Destination Port:", AutoSize = true };
+            perProcessSenderPortNumeric = new NumericUpDown
+            {
+                Name = "perProcessSenderPortNumeric",
+                Minimum = 1,
+                Maximum = 65535,
+                Value = 16402,
+                Width = (int)(80 * scaleFactor),
+                Margin = new Padding(0, 0, padding, padding/2),
+                Enabled = isCompatible
+            };
+            perProcessSenderPortNumeric.ValueChanged += (s, e) => {};
+            FlowLayoutPanel perProcessPortPanel = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.LeftToRight,
+                AutoSize = true,
+                WrapContents = false
+            };
+            perProcessPortPanel.Controls.AddRange(new Control[] { perProcessPortLabel, perProcessSenderPortNumeric });
+            screamPanel.Controls.Add(perProcessPortPanel);
+            
+            // Show compatibility warning if needed
+            if (!isCompatible)
+            {
+                perProcessSenderCompatibilityLabel = new Label
+                {
+                    Text = "Requires Windows 10 build 20348+ or Windows 11",
+                    AutoSize = true,
+                    ForeColor = Color.Red,
+                    Margin = new Padding(0, 0, 0, padding)
+                };
+                screamPanel.Controls.Add(perProcessSenderCompatibilityLabel);
+            }
 
             // Receiver Settings
             receiverEnabledCheckBox = new CheckBox
@@ -642,10 +740,16 @@ namespace ScreamRouterDesktop
             }
 
             // Save Scream settings
-            screamSettings.SenderEnabled = senderEnabledCheckBox?.Checked ?? false;
+            screamSettings.SenderEnabled = standardSenderRadioButton?.Checked ?? false;
             screamSettings.SenderIP = senderIpTextBox?.Text ?? "127.0.0.1";
             screamSettings.SenderPort = (int)(senderPortNumeric?.Value ?? 16401);
             screamSettings.SenderMulticast = multicastCheckBox?.Checked ?? false;
+            
+            // Save Per-Process Sender settings
+            screamSettings.PerProcessSenderEnabled = perProcessSenderRadioButton?.Checked ?? false;
+            screamSettings.PerProcessSenderIP = perProcessSenderIpTextBox?.Text ?? "127.0.0.1";
+            screamSettings.PerProcessSenderPort = (int)(perProcessSenderPortNumeric?.Value ?? 16402);
+            
             screamSettings.ReceiverEnabled = receiverEnabledCheckBox?.Checked ?? false;
             screamSettings.ReceiverPort = (int)(receiverPortNumeric?.Value ?? 4010);
             if (startAtBootCheckBox != null)
@@ -660,6 +764,37 @@ namespace ScreamRouterDesktop
             UpdateAudioInfo();
         }
 
+        private void StandardSenderRadioButton_CheckedChanged(object? sender, EventArgs e)
+        {
+            if (standardSenderRadioButton?.Checked == true)
+            {
+                // Enable standard sender controls
+                if (senderIpTextBox != null) senderIpTextBox.Enabled = true;
+                if (senderPortNumeric != null) senderPortNumeric.Enabled = true;
+                if (multicastCheckBox != null) multicastCheckBox.Enabled = true;
+                
+                // Disable per-process sender controls
+                if (perProcessSenderIpTextBox != null) perProcessSenderIpTextBox.Enabled = false;
+                if (perProcessSenderPortNumeric != null) perProcessSenderPortNumeric.Enabled = false;
+            }
+        }
+        
+        private void PerProcessSenderRadioButton_CheckedChanged(object? sender, EventArgs e)
+        {
+            if (perProcessSenderRadioButton?.Checked == true && IsCompatibleWithPerProcessSender())
+            {
+                // Disable standard sender controls
+                if (senderIpTextBox != null) senderIpTextBox.Enabled = false;
+                if (senderPortNumeric != null) senderPortNumeric.Enabled = false;
+                if (multicastCheckBox != null) multicastCheckBox.Enabled = false;
+                
+                // Enable per-process sender controls
+                if (perProcessSenderIpTextBox != null) perProcessSenderIpTextBox.Enabled = true;
+                if (perProcessSenderPortNumeric != null) perProcessSenderPortNumeric.Enabled = true;
+            }
+        }
+
+
         private void LoadConfiguration()
         {
             if (urlTextBox != null)
@@ -673,14 +808,38 @@ namespace ScreamRouterDesktop
             // Load Scream settings
             screamSettings.Load();
             
-            if (senderEnabledCheckBox != null)
-                senderEnabledCheckBox.Checked = screamSettings.SenderEnabled;
-            if (senderIpTextBox != null)
+            // Load standard sender settings
+            if (standardSenderRadioButton != null)
+                standardSenderRadioButton.Checked = screamSettings.SenderEnabled;
+            if (senderIpTextBox != null) {
                 senderIpTextBox.Text = screamSettings.SenderIP;
-            if (senderPortNumeric != null)
+                senderIpTextBox.Enabled = screamSettings.SenderEnabled;
+            }
+            if (senderPortNumeric != null) {
                 senderPortNumeric.Value = screamSettings.SenderPort;
-            if (multicastCheckBox != null)
+                senderPortNumeric.Enabled = screamSettings.SenderEnabled;
+            }
+            if (multicastCheckBox != null) {
                 multicastCheckBox.Checked = screamSettings.SenderMulticast;
+                multicastCheckBox.Enabled = screamSettings.SenderEnabled;
+            }
+            
+            // Load per-process sender settings
+            bool isCompatible = IsCompatibleWithPerProcessSender();
+            if (perProcessSenderRadioButton != null) {
+                perProcessSenderRadioButton.Checked = screamSettings.PerProcessSenderEnabled;
+                perProcessSenderRadioButton.Enabled = isCompatible;
+            }
+            if (perProcessSenderIpTextBox != null) {
+                perProcessSenderIpTextBox.Text = screamSettings.PerProcessSenderIP;
+                perProcessSenderIpTextBox.Enabled = screamSettings.PerProcessSenderEnabled && isCompatible;
+            }
+            if (perProcessSenderPortNumeric != null) {
+                perProcessSenderPortNumeric.Value = screamSettings.PerProcessSenderPort;
+                perProcessSenderPortNumeric.Enabled = screamSettings.PerProcessSenderEnabled && isCompatible;
+            }
+            
+            // Load receiver settings
             if (receiverEnabledCheckBox != null)
                 receiverEnabledCheckBox.Checked = screamSettings.ReceiverEnabled;
             if (receiverPortNumeric != null)

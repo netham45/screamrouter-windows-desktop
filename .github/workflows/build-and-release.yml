@@ -40,6 +40,10 @@ jobs:
     - name: Build ScreamSender
       run: |
         msbuild windows-scream-sender/ScreamSender.sln /p:Configuration=Release /p:Platform=x64
+    
+    - name: Build ScreamPerProcessSender
+      run: |
+        msbuild win-screamrouter-per-process-sender/ScreamPerProcessSender.sln /p:Configuration=Release /p:Platform=x64
         
     - name: Build ScreamReceiver
       run: |
@@ -56,6 +60,7 @@ jobs:
           "ScreamRouterDesktop/bin/Release/net8.0-windows/ScreamRouterDesktop.exe",
           "ScreamRouterDesktop/bin/Release/net8.0-windows/ScreamRouterDesktop.dll",
           "windows-scream-sender/x64/Release/ScreamSender.exe",
+          win-screamrouter-per-process-sender/x64/Release/ScreamPerProcessSender.exe",
           "windows-scream-receiver/x64/Release/ScreamReceiver.exe"
         )
         
@@ -78,7 +83,9 @@ jobs:
       run: |
         Copy-Item ScreamRouterDesktop/bin/Release/net8.0-windows/* -Destination release-artifacts/ -Recurse
         Copy-Item windows-scream-sender/x64/Release/ScreamSender.exe -Destination release-artifacts/
+        Copy-Item win-screamrouter-per-process-sender/x64/Release/ScreamPerProcessSender.exe -Destination release-artifacts/
         Copy-Item windows-scream-receiver/x64/Release/ScreamReceiver.exe -Destination release-artifacts/
+        
 
     - name: Create ZIP archive
       run: |

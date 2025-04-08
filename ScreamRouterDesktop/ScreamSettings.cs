@@ -11,6 +11,7 @@ namespace ScreamRouterDesktop
     {
         private Process? senderProcess;
         private Process? receiverProcess;
+        private Process? perProcessSenderProcess;
         private IntPtr jobHandle;
         private ZeroconfService? zeroconfService;
 
@@ -106,6 +107,10 @@ namespace ScreamRouterDesktop
         public string SenderIP { get; set; } = "127.0.0.1";
         public int SenderPort { get; set; } = 16401;
         public bool SenderMulticast { get; set; }
+        
+        public bool PerProcessSenderEnabled { get; set; }
+        public string PerProcessSenderIP { get; set; } = "127.0.0.1";
+        public int PerProcessSenderPort { get; set; } = 16402;
 
         public bool ReceiverEnabled { get; set; }
         public int ReceiverPort { get; set; } = 4010;
@@ -147,6 +152,9 @@ namespace ScreamRouterDesktop
             key.SetValue("SenderIP", SenderIP);
             key.SetValue("SenderPort", SenderPort);
             key.SetValue("SenderMulticast", SenderMulticast);
+            key.SetValue("PerProcessSenderEnabled", PerProcessSenderEnabled);
+            key.SetValue("PerProcessSenderIP", PerProcessSenderIP);
+            key.SetValue("PerProcessSenderPort", PerProcessSenderPort);
             key.SetValue("ReceiverEnabled", ReceiverEnabled);
             key.SetValue("ReceiverPort", ReceiverPort);
             
@@ -187,6 +195,9 @@ namespace ScreamRouterDesktop
                 SenderIP = (string?)key.GetValue("SenderIP", "127.0.0.1") ?? "127.0.0.1";
                 SenderPort = Convert.ToInt32(key.GetValue("SenderPort", 16401));
                 SenderMulticast = Convert.ToBoolean(key.GetValue("SenderMulticast", false));
+                PerProcessSenderEnabled = Convert.ToBoolean(key.GetValue("PerProcessSenderEnabled", false));
+                PerProcessSenderIP = (string?)key.GetValue("PerProcessSenderIP", "127.0.0.1") ?? "127.0.0.1";
+                PerProcessSenderPort = Convert.ToInt32(key.GetValue("PerProcessSenderPort", 16402));
                 ReceiverEnabled = Convert.ToBoolean(key.GetValue("ReceiverEnabled", false));
                 ReceiverPort = Convert.ToInt32(key.GetValue("ReceiverPort", 4010));
                 
@@ -229,7 +240,9 @@ namespace ScreamRouterDesktop
         public void StartProcesses()
         {
             Logger.Log("ScreamSettings", "Starting processes");
-            if (SenderEnabled && (senderProcess == null || senderProcess.HasExited))
+            
+            // Start the standard sender if enabled
+            if (SenderEnabled && !PerProcessSenderEnabled && (senderProcess == null || senderProcess.HasExited))
             {
                 string args = $"{SenderIP} {SenderPort}";
                 if (SenderMulticast) args += " -m";
@@ -248,7 +261,26 @@ namespace ScreamRouterDesktop
                 AssignProcessToJobObject(jobHandle, senderProcess.Handle);
                 Logger.Log("ScreamSettings", $"Started sender process with args: {args}");
             }
+            
+            // Start the per-process sender if enabled
+            if (PerProcessSenderEnabled && !SenderEnabled && (perProcessSenderProcess == null || perProcessSenderProcess.HasExited))
+            {
+                perProcessSenderProcess = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ScreamPerProcessSender.exe"),
+                        Arguments = $"{PerProcessSenderIP} {PerProcessSenderPort}",
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+                perProcessSenderProcess.Start();
+                AssignProcessToJobObject(jobHandle, perProcessSenderProcess.Handle);
+                Logger.Log("ScreamSettings", $"Started per-process sender with port: {PerProcessSenderPort}");
+            }
 
+            // Start the receiver if enabled
             if (ReceiverEnabled && (receiverProcess == null || receiverProcess.HasExited))
             {
                 receiverProcess = new Process
@@ -277,13 +309,24 @@ namespace ScreamRouterDesktop
         public void StopProcesses()
         {
             Logger.Log("ScreamSettings", "Stopping processes");
+            
+            // Stop standard sender
             if (senderProcess != null && !senderProcess.HasExited)
             {
                 senderProcess.Kill();
                 senderProcess.Dispose();
                 senderProcess = null;
             }
+            
+            // Stop per-process sender
+            if (perProcessSenderProcess != null && !perProcessSenderProcess.HasExited)
+            {
+                perProcessSenderProcess.Kill();
+                perProcessSenderProcess.Dispose();
+                perProcessSenderProcess = null;
+            }
 
+            // Stop receiver
             if (receiverProcess != null && !receiverProcess.HasExited)
             {
                 receiverProcess.Kill();

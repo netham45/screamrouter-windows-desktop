@@ -60,7 +60,7 @@ jobs:
           "ScreamRouterDesktop/bin/Release/net8.0-windows/ScreamRouterDesktop.exe",
           "ScreamRouterDesktop/bin/Release/net8.0-windows/ScreamRouterDesktop.dll",
           "windows-scream-sender/x64/Release/ScreamSender.exe",
-          win-screamrouter-per-process-sender/x64/Release/ScreamPerProcessSender.exe",
+          "win-screamrouter-per-process-sender/x64/Release/ScreamPerProcessSender.exe",
           "windows-scream-receiver/x64/Release/ScreamReceiver.exe"
         )
         

@@ -17,7 +17,6 @@ namespace ScreamRouterDesktop
         private Process? perProcessSenderProcess;
         private IntPtr jobHandle;
         private ZeroconfService? zeroconfService;
-        private DnsServer? dnsServer; // Add DnsServer field
         private const string RegistryPath = @"Software\ScreamRouterDesktop"; // Define registry path constant
 
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
@@ -96,8 +95,6 @@ namespace ScreamRouterDesktop
 
             // Initialize ZeroconfService
             zeroconfService = new ZeroconfService();
-            // Initialize DnsServer, passing the method to get audio settings
-            dnsServer = new DnsServer(zeroconfService.GetCurrentAudioSettings);
         }
 
         // Dispose pattern implementation
@@ -111,7 +108,6 @@ namespace ScreamRouterDesktop
                 {
                     // Dispose managed state (managed objects).
                     StopProcesses(); // Ensure processes and servers are stopped
-                    dnsServer?.Dispose();
                     zeroconfService?.Dispose();
                 }
 
@@ -311,7 +307,6 @@ namespace ScreamRouterDesktop
 
             // Pass the ReceiverID to the services
             zeroconfService?.SetReceiverID(ReceiverID);
-            dnsServer?.SetReceiverID(ReceiverID);
         }
 
         // Check if the start at boot option has been prompted before
@@ -412,9 +407,6 @@ namespace ScreamRouterDesktop
                     zeroconfService.Start();
                     Logger.Log("ScreamSettings", "Started ZeroconfService for mDNS discovery");
 
-                    // Start DNS Server (for TXT record)
-                    dnsServer?.Start();
-                    Logger.Log("ScreamSettings", "Started DNS Server for TXT record query");
                 }
             }
         }
@@ -454,7 +446,6 @@ namespace ScreamRouterDesktop
                     Logger.Log("ScreamSettings", "Stopped ZeroconfService");
 
                     // Stop DNS Server
-                    dnsServer?.Stop();
                     Logger.Log("ScreamSettings", "Stopped DNS Server");
                 }
             }

@@ -20,6 +20,8 @@ namespace ScreamRouterDesktop
         private const int MDNS_PORT = 5353;
         private const string MDNS_SERVICE_NAME = "_sink._scream._udp.local";
         private const string MDNS_SETTINGS_SERVICE_NAME = "_settings._sink._scream._udp.local";
+        private const string MDNS_SOURCE_SERVICE_NAME = "_source._scream._udp.local";
+        private const string MDNS_SOURCE_SETTINGS_SERVICE_NAME = "_settings._source._scream._udp.local";
         private MulticastService? mdnsService;
         private DomainName serviceName;
         private UdpClient? queryClient;
@@ -129,7 +131,7 @@ namespace ScreamRouterDesktop
         {
             serviceName = new DomainName(MDNS_SERVICE_NAME);
         }
-        
+
         // Method to set the ReceiverID from ScreamSettings
         public void SetReceiverID(string id)
         {
@@ -153,26 +155,17 @@ namespace ScreamRouterDesktop
                     Trace.WriteLine("mDNS service initialized");
                 }
 
-                // Initialize query client if needed
-                if (queryClient == null)
-                {
-                    queryClient = new UdpClient();
-                    queryClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-                    queryClient.Client.Bind(new IPEndPoint(IPAddress.Any, MDNS_PORT));
-                    Trace.WriteLine("Query client initialized");
-                }
-
                 // Create new cancellation token source
                 cancellationTokenSource = new CancellationTokenSource();
 
                 // Start the mDNS service
                 mdnsService.Start();
 
-                // Start a raw UDP packet dumper for debugging
-                Task.Run(() => DumpUdpPackets(cancellationTokenSource.Token));
-
-                // Start a dedicated unicast listener
-                Task.Run(() => ListenForUnicastQueries(cancellationTokenSource.Token));
+                // Start a dedicated listener for ANY direct query
+                Task.Run(() => ListenForAllQueries(cancellationTokenSource.Token));
+                
+                // Start a dedicated listener for settings TXT queries
+                Task.Run(() => ListenForSettingsTxtQueries(cancellationTokenSource.Token));
 
                 isRunning = true;
                 Trace.WriteLine("ZeroconfService started");
@@ -184,19 +177,250 @@ namespace ScreamRouterDesktop
             }
         }
 
-        private async Task ListenForUnicastQueries(CancellationToken cancellationToken)
+        // This method specifically handles settings TXT queries for both sink and source domains
+        private async Task ListenForSettingsTxtQueries(CancellationToken cancellationToken)
         {
             try
             {
+                // Create a dedicated socket for settings.scream.local TXT queries
                 using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
                 {
                     // Set socket options
                     socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                    
+                    // CRITICAL: Bind to port 5353 - this ensures we can receive and respond on the same port
+                    socket.Bind(new IPEndPoint(IPAddress.Any, MDNS_PORT));
+                    
+                    Trace.WriteLine("SETTINGS.SCREAM.LOCAL HANDLER: Started on port 5353");
+                    
+                    // Buffer for receiving data
+                    byte[] buffer = new byte[4096];
+                    
+                    while (!cancellationToken.IsCancellationRequested)
+                    {
+                        try
+                        {
+                            // Set up endpoint for receiving
+                            EndPoint remoteEP = new IPEndPoint(IPAddress.Any, 0);
+                            
+                            // Receive data
+                            int bytesRead = socket.ReceiveFrom(buffer, ref remoteEP);
+                            IPEndPoint senderEP = (IPEndPoint)remoteEP;
+                            
+                            Trace.WriteLine($"SETTINGS.SCREAM.LOCAL HANDLER: Received {bytesRead} bytes from {senderEP}");
+                            
+                            // Try to parse as DNS message
+                            try
+                            {
+                                var message = new Message();
+                                message.Read(buffer, 0, bytesRead);
+                                
+                                // Process each question
+                                foreach (var question in message.Questions)
+                                {
+                                    string questionName = question.Name.ToString();
+                                    int questionType = (int)question.Type;
+                                    
+                                    Trace.WriteLine($"SETTINGS.SCREAM.LOCAL HANDLER: Question - Name: {questionName}, Type: {questionType}");
+                                    
+                                    // Check if this is a TXT query for sink.settings.screamrouter.local or source.settings.screamrouter.local
+                                    bool isSinkSettingsLocalTxtQuery = 
+                                        (questionName.Equals("sink.settings.screamrouter.local", StringComparison.OrdinalIgnoreCase) ||
+                                         questionName.Equals("sink.settings.screamrouter.local.", StringComparison.OrdinalIgnoreCase)) &&
+                                        questionType == DNS_TYPE_TXT;
+                                    
+                                    bool isSourceSettingsLocalTxtQuery = 
+                                        (questionName.Equals("source.settings.screamrouter.local", StringComparison.OrdinalIgnoreCase) ||
+                                         questionName.Equals("source.settings.screamrouter.local.", StringComparison.OrdinalIgnoreCase)) &&
+                                        questionType == DNS_TYPE_TXT;
+                                    
+                                    // For backward compatibility
+                                    bool isLegacySettingsLocalTxtQuery = 
+                                        (questionName.Equals("settings.scream.local", StringComparison.OrdinalIgnoreCase) ||
+                                         questionName.Equals("settings.scream.local.", StringComparison.OrdinalIgnoreCase)) &&
+                                        questionType == DNS_TYPE_TXT;
+                                    
+                                    if (isSinkSettingsLocalTxtQuery || isLegacySettingsLocalTxtQuery)
+                                    {
+                                        Trace.WriteLine($"SETTINGS HANDLER: Found sink.settings.screamrouter.local TXT query from {senderEP}");
+                                        
+                                        // Get current audio settings
+                                        var audioSettings = GetCurrentAudioSettings();
+                                        if (audioSettings == null)
+                                        {
+                                            Trace.WriteLine("SETTINGS HANDLER: Could not retrieve audio settings");
+                                            continue;
+                                        }
+                                        
+                                        // Format settings as key=value pairs separated by semicolons
+                                        string settingsText = string.Join(";",
+                                            $"bit_depth={audioSettings.BitDepth}",
+                                            $"sample_rate={audioSettings.SampleRate}",
+                                            $"channels={audioSettings.Channels}",
+                                            $"channel_layout={audioSettings.ChannelLayout}",
+                                            $"id={this.receiverID}",
+                                            $"ip={GetLocalIPForRemote(senderEP.Address)}"
+                                        );
+                                        
+                                        // Create a response message
+                                        var response = new Message
+                                        {
+                                            Id = message.Id,
+                                            QR = true,     // This is a response
+                                            Opcode = 0,    // Standard query
+                                            AA = true,     // Authoritative answer
+                                            TC = false,    // Not truncated
+                                            RD = false,    // Recursion not desired
+                                            RA = false,    // Recursion not available
+                                            Z = 0          // Reserved bits should be zero
+                                        };
+                                        
+                                        // Copy the question
+                                        response.Questions.Add(question);
+                                        
+                                        // Add a TXT record with our settings
+                                        var txtRecord = new TXTRecord
+                                        {
+                                            Name = question.Name,
+                                            Strings = new List<string> { settingsText },
+                                            TTL = TimeSpan.FromMinutes(5) // 5 minute TTL
+                                        };
+                                        response.Answers.Add(txtRecord);
+                                        
+                                        // Send the response directly to the sender from port 5353
+                                        byte[] responseData = response.ToByteArray();
+                                        socket.SendTo(responseData, senderEP);
+                                        
+                                        Trace.WriteLine($"SETTINGS HANDLER: Sent sink TXT response to {senderEP} with settings: {settingsText}");
+                                        Trace.WriteLine($"SETTINGS HANDLER: Response hex dump: {BitConverter.ToString(responseData)}");
+                                    }
+                                    else if (isSourceSettingsLocalTxtQuery)
+                                    {
+                                        Trace.WriteLine($"SETTINGS HANDLER: Found source.settings.screamrouter.local TXT query from {senderEP}");
+                                        
+                                        // For source settings, we provide information about the source configuration
+                                        // Format settings as key=value pairs separated by semicolons
+                                        string settingsText = string.Join(";",
+                                            $"id={this.receiverID}",
+                                            $"ip={GetLocalIPForRemote(senderEP.Address)}",
+                                            $"type=source",
+                                            $"version=1.0"
+                                        );
+                                        
+                                        // Create a response message
+                                        var response = new Message
+                                        {
+                                            Id = message.Id,
+                                            QR = true,     // This is a response
+                                            Opcode = 0,    // Standard query
+                                            AA = true,     // Authoritative answer
+                                            TC = false,    // Not truncated
+                                            RD = false,    // Recursion not desired
+                                            RA = false,    // Recursion not available
+                                            Z = 0          // Reserved bits should be zero
+                                        };
+                                        
+                                        // Copy the question
+                                        response.Questions.Add(question);
+                                        
+                                        // Add a TXT record with our settings
+                                        var txtRecord = new TXTRecord
+                                        {
+                                            Name = question.Name,
+                                            Strings = new List<string> { settingsText },
+                                            TTL = TimeSpan.FromMinutes(5) // 5 minute TTL
+                                        };
+                                        response.Answers.Add(txtRecord);
+                                        
+                                        // Send the response directly to the sender from port 5353
+                                        byte[] responseData = response.ToByteArray();
+                                        socket.SendTo(responseData, senderEP);
+                                        
+                                        Trace.WriteLine($"SETTINGS HANDLER: Sent source TXT response to {senderEP} with settings: {settingsText}");
+                                        Trace.WriteLine($"SETTINGS HANDLER: Response hex dump: {BitConverter.ToString(responseData)}");
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Trace.WriteLine($"SETTINGS.SCREAM.LOCAL HANDLER: Error parsing DNS message: {ex.Message}");
+                            }
+                            
+                            // Small delay to prevent CPU hogging
+                            await Task.Delay(10, cancellationToken);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            break;
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.WriteLine($"SETTINGS.SCREAM.LOCAL HANDLER: Error receiving packet: {ex.Message}");
+                            await Task.Delay(100, cancellationToken);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"Error in settings.scream.local handler: {ex.Message}");
+            }
+        }
 
-                    // Bind to the mDNS port on any address
+        // This method will respond to ALL DNS queries on ALL interfaces
+        private async Task ListenForAllQueries(CancellationToken cancellationToken)
+        {
+            try
+            {
+                // Create a raw UDP socket
+                using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
+                {
+                    // Set socket options
+                    socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                    socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Broadcast, true);
+
+                    // Explicitly allow address reuse
+                    if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                    {
+                        const int SIO_UDP_CONNRESET = -1744830452;
+                        socket.IOControl(SIO_UDP_CONNRESET, new byte[] { 0 }, null);
+                    }
+
+                    // CRITICAL: Bind to ANY address on port 5353
                     socket.Bind(new IPEndPoint(IPAddress.Any, MDNS_PORT));
 
-                    Trace.WriteLine("Unicast listener started on port 5353");
+                    // Join the multicast group on all network interfaces
+                    foreach (var networkInterface in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces()
+                        .Where(ni => ni.OperationalStatus == System.Net.NetworkInformation.OperationalStatus.Up &&
+                               ni.NetworkInterfaceType != System.Net.NetworkInformation.NetworkInterfaceType.Loopback))
+                    {
+                        try
+                        {
+                            var ipProperties = networkInterface.GetIPProperties();
+                            foreach (var unicastAddress in ipProperties.UnicastAddresses)
+                            {
+                                if (unicastAddress.Address.AddressFamily == AddressFamily.InterNetwork)
+                                {
+                                    try
+                                    {
+                                        socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.AddMembership,
+                                            new MulticastOption(IPAddress.Parse("224.0.0.251"), unicastAddress.Address));
+                                        Trace.WriteLine($"Joined multicast group on interface {networkInterface.Name} with IP {unicastAddress.Address}");
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Trace.WriteLine($"Failed to join multicast group on interface {networkInterface.Name} with IP {unicastAddress.Address}: {ex.Message}");
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.WriteLine($"Error processing network interface {networkInterface.Name}: {ex.Message}");
+                        }
+                    }
+
+                    Trace.WriteLine("UNIVERSAL LISTENER: Started on port 5353 - will respond to ALL DNS queries");
 
                     // Buffer for receiving data
                     byte[] buffer = new byte[4096];
@@ -210,44 +434,228 @@ namespace ScreamRouterDesktop
 
                             // Receive data
                             int bytesRead = socket.ReceiveFrom(buffer, ref remoteEP);
-                            byte[] data = new byte[bytesRead];
-                            Array.Copy(buffer, data, bytesRead);
-
                             IPEndPoint senderEP = (IPEndPoint)remoteEP;
 
-                            Trace.WriteLine($"UNICAST: Received {bytesRead} bytes from {senderEP}");
-                            Trace.WriteLine($"UNICAST: Hex dump: {BitConverter.ToString(data)}");
+                            Trace.WriteLine($"UNIVERSAL LISTENER: Received {bytesRead} bytes from {senderEP}");
+                            Trace.WriteLine($"UNIVERSAL LISTENER: Hex dump: {BitConverter.ToString(buffer, 0, bytesRead)}");
 
-                            // Process the DNS query
+                            // Get current audio settings
+                            var audioSettings = GetCurrentAudioSettings();
+                            if (audioSettings == null)
+                            {
+                                Trace.WriteLine("UNIVERSAL LISTENER: Could not retrieve audio settings");
+                                continue;
+                            }
+
+                            // Format settings as key=value pairs separated by semicolons
+                            string settingsText = string.Join(";",
+                                $"bit_depth={audioSettings.BitDepth}",
+                                $"sample_rate={audioSettings.SampleRate}",
+                                $"channels={audioSettings.Channels}",
+                                $"channel_layout={audioSettings.ChannelLayout}",
+                                $"id={this.receiverID}",
+                                $"ip={GetLocalIPForRemote(senderEP.Address)}"
+                            );
+
+                            // Try to parse as DNS message
                             try
                             {
                                 var message = new Message();
-                                message.Read(data, 0, data.Length);
+                                message.Read(buffer, 0, bytesRead);
 
-                                Trace.WriteLine($"UNICAST: Parsed as DNS message - ID: {message.Id}, Questions: {message.Questions.Count}");
+                                Trace.WriteLine($"UNIVERSAL LISTENER: Parsed as DNS message - ID: {message.Id}, Questions: {message.Questions.Count}");
+
+                                // Create a response message
+                                var response = new Message
+                                {
+                                    Id = message.Id,
+                                    QR = true,     // This is a response
+                                    Opcode = 0,    // Standard query
+                                    AA = true,     // Authoritative answer
+                                    TC = false,    // Not truncated
+                                    RD = false,    // Recursion not desired
+                                    RA = false,    // Recursion not available
+                                    Z = 0          // Reserved bits should be zero
+                                };
 
                                 // Process each question
                                 foreach (var question in message.Questions)
                                 {
-                                    Trace.WriteLine($"UNICAST: Question - Name: {question.Name}, Type: {question.Type}, Class: {question.Class}");
+                                    Trace.WriteLine($"UNIVERSAL LISTENER: Question - Name: {question.Name}, Type: {question.Type}, Class: {question.Class}");
 
-                                    // Check if this is a query for our settings
+                                    // Process any query we receive
                                     string questionName = question.Name.ToString();
                                     int questionType = (int)question.Type;
 
-                                    bool isSettingsQuery = questionName.Equals(MDNS_SETTINGS_SERVICE_NAME, StringComparison.OrdinalIgnoreCase) ||
-                                                           questionName.Equals($"{MDNS_SETTINGS_SERVICE_NAME}.", StringComparison.OrdinalIgnoreCase);
+                                    Trace.WriteLine($"UNIVERSAL LISTENER: Processing query for {questionName} (Type: {questionType}) from {senderEP}");
 
-                                    // Handle TXT record queries for settings
-                                    if (isSettingsQuery && questionType == DNS_TYPE_TXT)
+                                    // Get the IP address for the interface that would be used to reach the remote endpoint
+                                    IPAddress localIp = GetLocalIPForRemote(senderEP.Address);
+
+                                    // Check if this is a query for settings domains
+                    bool isSettingsLocalQuery = questionName.Equals("settings.scream.local", StringComparison.OrdinalIgnoreCase) ||
+                                               questionName.Equals("settings.scream.local.", StringComparison.OrdinalIgnoreCase);
+                    
+                    bool isSinkSettingsLocalQuery = questionName.Equals("sink.settings.screamrouter.local", StringComparison.OrdinalIgnoreCase) ||
+                                                   questionName.Equals("sink.settings.screamrouter.local.", StringComparison.OrdinalIgnoreCase);
+                    
+                    bool isSourceSettingsLocalQuery = questionName.Equals("source.settings.screamrouter.local", StringComparison.OrdinalIgnoreCase) ||
+                                                     questionName.Equals("source.settings.screamrouter.local.", StringComparison.OrdinalIgnoreCase);
+
+                                    // Copy the question to the response
+                                    response.Questions.Add(question);
+
+                                    // Handle based on query type
+                                    if (questionType == DNS_TYPE_A)
                                     {
+                                        // Add an A record with our IP address
+                                        var aRecord = new ARecord
+                                        {
+                                            Name = question.Name,
+                                            Address = localIp,
+                                            TTL = TimeSpan.FromHours(1) // 1 hour TTL
+                                        };
+                                        response.Answers.Add(aRecord);
+                                        Trace.WriteLine($"UNIVERSAL LISTENER: Added A record with IP {localIp} for {question.Name}");
                                     }
-                                    // Removed TXT record handling from here - now done by DnsServer.cs
+                                    else if (questionType == DNS_TYPE_TXT)
+                                    {
+                                        string txtContent;
+                                        
+                                        if (isSourceSettingsLocalQuery)
+                                        {
+                                            // For source settings, provide source-specific information
+                                            txtContent = string.Join(";",
+                                                $"id={this.receiverID}",
+                                                $"ip={GetLocalIPForRemote(senderEP.Address)}",
+                                                $"type=source",
+                                                $"version=1.0"
+                                            );
+                                            Trace.WriteLine($"UNIVERSAL LISTENER: Responding with source settings for {questionName}");
+                                        }
+                                        else
+                                        {
+                                            // For sink settings or legacy settings, provide audio settings
+                                            txtContent = settingsText;
+                                            Trace.WriteLine($"UNIVERSAL LISTENER: Responding with sink settings for {questionName}");
+                                        }
+                                        
+                                        // Add a TXT record with our settings
+                                        var txtRecord = new TXTRecord
+                                        {
+                                            Name = question.Name,
+                                            Strings = new List<string> { txtContent },
+                                            TTL = TimeSpan.FromMinutes(5) // 5 minute TTL
+                                        };
+                                        response.Answers.Add(txtRecord);
+                                        Trace.WriteLine($"UNIVERSAL LISTENER: Added TXT record for {question.Name} with settings: {txtContent}");
+                                    }
+                                    else if (questionType == 12) // PTR record
+                                    {
+                                        // Add a PTR record pointing to our service
+                                        var ptrRecord = new PTRRecord
+                                        {
+                                            Name = question.Name,
+                                            DomainName = new DomainName(MDNS_SERVICE_NAME),
+                                            TTL = TimeSpan.FromHours(1) // 1 hour TTL
+                                        };
+                                        response.Answers.Add(ptrRecord);
+                                        Trace.WriteLine($"UNIVERSAL LISTENER: Added PTR record for {question.Name} pointing to {MDNS_SERVICE_NAME}");
+                                    }
+                                }
+
+                                // Only send a response if we added any answers
+                                if (response.Answers.Count > 0)
+                                {
+                                    // Send the response directly to the sender
+                                    byte[] responseData = response.ToByteArray();
+                                    socket.SendTo(responseData, senderEP);
+                                    Trace.WriteLine($"UNIVERSAL LISTENER: Sent response to {senderEP}");
+                                    Trace.WriteLine($"UNIVERSAL LISTENER: Response hex dump: {BitConverter.ToString(responseData)}");
+
+                                    // If this was a multicast query, also send a multicast response
+                                    if (senderEP.Address.Equals(IPAddress.Parse("224.0.0.251")) || senderEP.Port == MDNS_PORT)
+                                    {
+                                        socket.SendTo(responseData, new IPEndPoint(IPAddress.Parse("224.0.0.251"), MDNS_PORT));
+                                        Trace.WriteLine($"UNIVERSAL LISTENER: Also sent multicast response to 224.0.0.251:{MDNS_PORT}");
+                                    }
                                 }
                             }
                             catch (Exception ex)
                             {
-                                Trace.WriteLine($"UNICAST: Error parsing DNS message: {ex.Message}");
+                                Trace.WriteLine($"UNIVERSAL LISTENER: Error parsing DNS message: {ex.Message}");
+
+                                // Even if parsing fails, try to send a hardcoded response for settings.scream.local TXT query
+                                try
+                                {
+                                    // Check if the query might be for source.settings.screamrouter.local
+                                    bool mightBeSourceQuery = buffer.Length > 20 && 
+                                                             Encoding.ASCII.GetString(buffer).Contains("source.settings");
+                                    
+                                    // Create a hardcoded response
+                                    var hardcodedResponse = new Message
+                                    {
+                                        Id = 0, // Use a default ID
+                                        QR = true,
+                                        Opcode = 0,
+                                        AA = true,
+                                        TC = false,
+                                        RD = false,
+                                        RA = false,
+                                        Z = 0
+                                    };
+
+                                    string domainName;
+                                    string responseContent;
+                                    
+                                    if (mightBeSourceQuery)
+                                    {
+                                        // For source settings
+                                        domainName = "source.settings.screamrouter.local";
+                                        responseContent = string.Join(";",
+                                            $"id={this.receiverID}",
+                                            $"ip={GetLocalIPForRemote(senderEP.Address)}",
+                                            $"type=source",
+                                            $"version=1.0"
+                                        );
+                                        Trace.WriteLine("UNIVERSAL LISTENER: Sending hardcoded source settings response");
+                                    }
+                                    else
+                                    {
+                                        // Default to sink settings
+                                        domainName = "settings.scream.local";
+                                        responseContent = settingsText;
+                                        Trace.WriteLine("UNIVERSAL LISTENER: Sending hardcoded sink settings response");
+                                    }
+
+                                    // Add a question for the appropriate domain
+                                    var question = new Question
+                                    {
+                                        Name = new DomainName(domainName),
+                                        Type = DnsType.TXT,
+                                        Class = DnsClass.IN
+                                    };
+                                    hardcodedResponse.Questions.Add(question);
+
+                                    // Add a TXT record with our settings
+                                    var txtRecord = new TXTRecord
+                                    {
+                                        Name = new DomainName(domainName),
+                                        Strings = new List<string> { responseContent },
+                                        TTL = TimeSpan.FromMinutes(5)
+                                    };
+                                    hardcodedResponse.Answers.Add(txtRecord);
+
+                                    // Send the hardcoded response
+                                    byte[] responseData = hardcodedResponse.ToByteArray();
+                                    socket.SendTo(responseData, senderEP);
+
+                                    Trace.WriteLine($"UNIVERSAL LISTENER: Sent hardcoded response to {senderEP}");
+                                }
+                                catch (Exception innerEx)
+                                {
+                                    Trace.WriteLine($"UNIVERSAL LISTENER: Error sending hardcoded response: {innerEx.Message}");
+                                }
                             }
 
                             // Small delay to prevent CPU hogging
@@ -259,9 +667,7 @@ namespace ScreamRouterDesktop
                         }
                         catch (Exception ex)
                         {
-                            Trace.WriteLine($"UNICAST: Error receiving packet: {ex.Message}");
-
-                            // Small delay to prevent CPU hogging in case of repeated errors
+                            Trace.WriteLine($"UNIVERSAL LISTENER: Error receiving packet: {ex.Message}");
                             await Task.Delay(100, cancellationToken);
                         }
                     }
@@ -269,71 +675,7 @@ namespace ScreamRouterDesktop
             }
             catch (Exception ex)
             {
-                Trace.WriteLine($"Error in unicast listener: {ex.Message}");
-            }
-        }
-
-        private async Task DumpUdpPackets(CancellationToken cancellationToken)
-        {
-            try
-            {
-                // Create a new UDP client for raw packet dumping
-                using (var dumpClient = new UdpClient())
-                {
-                    // Configure socket options
-                    dumpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-
-                    // Bind to the mDNS port on any address to receive unicast queries
-                    dumpClient.Client.Bind(new IPEndPoint(IPAddress.Any, MDNS_PORT));
-
-                    // Join the multicast group to receive multicast queries
-                    dumpClient.JoinMulticastGroup(IPAddress.Parse("224.0.0.251"));
-
-                    Trace.WriteLine("UDP packet dumper started - listening for both unicast and multicast");
-
-                    while (!cancellationToken.IsCancellationRequested)
-                    {
-                        try
-                        {
-                            var result = await dumpClient.ReceiveAsync(cancellationToken);
-                            var data = result.Buffer;
-                            var sender = result.RemoteEndPoint;
-
-                            Trace.WriteLine($"RAW UDP: Received {data.Length} bytes from {sender}");
-                            Trace.WriteLine($"RAW UDP: Hex dump: {BitConverter.ToString(data)}");
-
-                            // Try to parse as DNS message
-                            try
-                            {
-                                var message = new Message();
-                                message.Read(data, 0, data.Length);
-
-                                Trace.WriteLine($"RAW UDP: Parsed as DNS message - ID: {message.Id}, Questions: {message.Questions.Count}");
-
-                                foreach (var q in message.Questions)
-                                {
-                                    Trace.WriteLine($"RAW UDP: Question - Name: {q.Name}, Type: {q.Type}, Class: {q.Class}");
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                Trace.WriteLine($"RAW UDP: Not a valid DNS message: {ex.Message}");
-                            }
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            break;
-                        }
-                        catch (Exception ex)
-                        {
-                            Trace.WriteLine($"RAW UDP: Error receiving packet: {ex.Message}");
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Trace.WriteLine($"Error in UDP packet dumper: {ex.Message}");
+                Trace.WriteLine($"Error in universal listener: {ex.Message}");
             }
         }
 
@@ -381,14 +723,131 @@ namespace ScreamRouterDesktop
                     Trace.WriteLine($"Detailed query info - Name: {questionName}, Type: {questionType}, DNS_TYPE_TXT: {DNS_TYPE_TXT}");
                     Trace.WriteLine($"Raw question data: {BitConverter.ToString(question.ToByteArray())}");
                     Trace.WriteLine($"Message ID: {e.Message.Id}, Flags: {e.Message.QR},{e.Message.Opcode},{e.Message.AA},{e.Message.TC},{e.Message.RD},{e.Message.RA},{e.Message.Z}");
+                    Trace.WriteLine($"REMOTE ENDPOINT: {e.RemoteEndPoint.Address}:{e.RemoteEndPoint.Port}");
 
                     bool isHostnameQuery = questionName.Equals(MDNS_SERVICE_NAME, StringComparison.OrdinalIgnoreCase) ||
                                            questionName.Equals($"{MDNS_SERVICE_NAME}.", StringComparison.OrdinalIgnoreCase);
                     bool isSettingsQuery = questionName.Equals(MDNS_SETTINGS_SERVICE_NAME, StringComparison.OrdinalIgnoreCase) ||
                                            questionName.Equals($"{MDNS_SETTINGS_SERVICE_NAME}.", StringComparison.OrdinalIgnoreCase);
+                    bool isSettingsLocalQuery = questionName.Equals("settings.scream.local", StringComparison.OrdinalIgnoreCase) ||
+                                               questionName.Equals("settings.scream.local.", StringComparison.OrdinalIgnoreCase);
+                    
+                    // New domain queries
+                    bool isSinkQuery = questionName.Equals("sink.screamrouter.local", StringComparison.OrdinalIgnoreCase) ||
+                                      questionName.Equals("sink.screamrouter.local.", StringComparison.OrdinalIgnoreCase);
+                    bool isSourceQuery = questionName.Equals("source.screamrouter.local", StringComparison.OrdinalIgnoreCase) ||
+                                        questionName.Equals("source.screamrouter.local.", StringComparison.OrdinalIgnoreCase);
+                    
+                    // Check for sink and source settings queries
+                    bool isSinkSettingsLocalQuery = questionName.Equals("sink.settings.screamrouter.local", StringComparison.OrdinalIgnoreCase) ||
+                                                   questionName.Equals("sink.settings.screamrouter.local.", StringComparison.OrdinalIgnoreCase);
+                    
+                    bool isSourceSettingsLocalQuery = questionName.Equals("source.settings.screamrouter.local", StringComparison.OrdinalIgnoreCase) ||
+                                                     questionName.Equals("source.settings.screamrouter.local.", StringComparison.OrdinalIgnoreCase);
+                    
+                    // CRITICAL FIX: Always respond to settings TXT queries regardless of other conditions
+                    if ((isSettingsLocalQuery || isSinkSettingsLocalQuery || isSourceSettingsLocalQuery) && questionType == DNS_TYPE_TXT)
+                    {
+                        Trace.WriteLine($"CRITICAL: Detected settings.scream.local TXT query from {e.RemoteEndPoint.Address}");
+                        
+                        // Get current audio settings
+                        var audioSettings = GetCurrentAudioSettings();
+                        if (audioSettings == null)
+                        {
+                            Trace.WriteLine("Could not retrieve audio settings");
+                            return;
+                        }
+                        
+                        // Format settings as key=value pairs separated by semicolons
+                        string settingsText;
+                        
+                        if (isSourceSettingsLocalQuery)
+                        {
+                            // For source settings, provide source-specific information
+                            settingsText = string.Join(";",
+                                $"id={this.receiverID}",
+                                $"ip={GetLocalIPForRemote(e.RemoteEndPoint.Address)}",
+                                $"type=source",
+                                $"version=1.0"
+                            );
+                            Trace.WriteLine($"Responding with source settings for {questionName}");
+                        }
+                        else
+                        {
+                            // For sink settings or legacy settings, provide audio settings
+                            settingsText = string.Join(";",
+                                $"bit_depth={audioSettings.BitDepth}",
+                                $"sample_rate={audioSettings.SampleRate}",
+                                $"channels={audioSettings.Channels}",
+                                $"channel_layout={audioSettings.ChannelLayout}",
+                                $"id={this.receiverID}",
+                                $"ip={GetLocalIPForRemote(e.RemoteEndPoint.Address)}"
+                            );
+                            Trace.WriteLine($"Responding with sink settings for {questionName}");
+                        }
+                        
+                        // Create a response message
+                        var response = new Message
+                        {
+                            Id = e.Message.Id,
+                            QR = true,     // This is a response
+                            Opcode = 0,    // Standard query
+                            AA = true,     // Authoritative answer
+                            TC = false,    // Not truncated
+                            RD = false,    // Recursion not desired
+                            RA = false,    // Recursion not available
+                            Z = 0          // Reserved bits should be zero
+                        };
+                        
+                        // Copy the question
+                        response.Questions.Add(question);
+                        
+                        // Add a TXT record with our settings
+                        var txtRecord = new TXTRecord
+                        {
+                            Name = question.Name,
+                            Strings = new List<string> { settingsText },
+                            TTL = TimeSpan.FromMinutes(5) // 5 minute TTL
+                        };
+                        Trace.WriteLine(txtRecord);
+                        response.Answers.Add(txtRecord);
+                        
+                        // Send via multicast service
+                        mdnsService?.SendAnswer(response);
+                        
+                        // CRITICAL FIX: Always send a direct unicast response for settings.scream.local TXT queries
+                        // This bypasses all the normal logic and ensures a direct response
+                        try
+                        {
+                            using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
+                            {
+                                // Get the IP address for the interface that would be used to reach the remote endpoint
+                                IPAddress localIp = GetLocalIPForRemote(e.RemoteEndPoint.Address);
+                                
+                                // Bind to ANY address (critical for Windows UDP sockets)
+                                socket.Bind(new IPEndPoint(IPAddress.Any, 0));
+                                
+                                // Set the outgoing interface
+                                socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.MulticastInterface, 
+                                    localIp.GetAddressBytes());
+                                
+                                // Convert to bytes
+                                byte[] buffer = response.ToByteArray();
+                                
+                                // CRITICAL FIX: Send directly to the requester's original source port
+                                socket.SendTo(buffer, new IPEndPoint(e.RemoteEndPoint.Address, e.RemoteEndPoint.Port));
+                                
+                                Trace.WriteLine($"CRITICAL FIX: Direct response sent to {e.RemoteEndPoint.Address}:{MDNS_PORT} from {localIp}");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.WriteLine($"CRITICAL FIX: Error sending direct response: {ex.Message}");
+                        }
+                    }
 
-                    // Handle A record queries for both hostname and settings service
-                    if ((isHostnameQuery || isSettingsQuery) && questionType == DNS_TYPE_A)
+                    // Handle A record queries for hostname, settings service, settings.scream.local, sink.screamrouter.local, and source.screamrouter.local
+                    if ((isHostnameQuery || isSettingsQuery || isSettingsLocalQuery || isSinkQuery || isSourceQuery) && questionType == DNS_TYPE_A)
                     {
                         IPEndPoint remoteEndPoint = e.RemoteEndPoint;
                         Trace.WriteLine($"Received hostname query from {remoteEndPoint.Address} for {question.Name}");
@@ -426,9 +885,141 @@ namespace ScreamRouterDesktop
                         mdnsService?.SendAnswer(response);
 
                         // Also send directly to the requester using a raw UDP socket
-                        SendDirectResponse(response, remoteEndPoint.Address, localIp);
+                        SendDirectResponse(response, remoteEndPoint.Address, localIp, remoteEndPoint.Port);
                     }
-                    // Removed TXT record handling from here - now done by DnsServer.cs
+                    else if ((isSettingsQuery || isSettingsLocalQuery) && ((int)question.Type) == DNS_TYPE_TXT)
+                    {
+                        IPEndPoint remoteEndPoint = e.RemoteEndPoint;
+                        Trace.WriteLine($"Received settings query from {remoteEndPoint.Address} for {question.Name}");
+
+                        // Get the IP address for the interface that would be used to reach the remote endpoint
+                        IPAddress localIp = GetLocalIPForRemote(remoteEndPoint.Address);
+
+                        // Get current audio settings
+                        var audioSettings = GetCurrentAudioSettings();
+                        if (audioSettings == null)
+                        {
+                            Trace.WriteLine("Could not retrieve audio settings");
+                            return;
+                        }
+
+                        Trace.WriteLine($"Responding with audio settings: bit_depth={audioSettings.BitDepth}, " +
+                                       $"sample_rate={audioSettings.SampleRate}, channels={audioSettings.Channels}, " +
+                                       $"channel_layout={audioSettings.ChannelLayout}, id={this.receiverID}");
+
+                        // Create a response message
+                        var response = new Message
+                        {
+                            Id = e.Message.Id,
+                            QR = true,     // This is a response
+                            Opcode = 0,    // Standard query
+                            AA = true,     // Authoritative answer
+                            TC = false,    // Not truncated
+                            RD = false,    // Recursion not desired
+                            RA = false,    // Recursion not available
+                            Z = 0          // Reserved bits should be zero
+                        };
+
+                        // Copy the question
+                        response.Questions.Add(question);
+
+                        // Format settings as key=value pairs separated by semicolons
+                        // This matches exactly what the Python code expects
+                        string settingsText = string.Join(";",
+                            $"bit_depth={audioSettings.BitDepth}",
+                            $"sample_rate={audioSettings.SampleRate}",
+                            $"channels={audioSettings.Channels}",
+                            $"channel_layout={audioSettings.ChannelLayout}",
+                            $"id={this.receiverID}",
+                            $"ip={GetLocalIPForRemote(remoteEndPoint.Address)}"
+                        );
+
+                        // Log what we're sending
+                        Trace.WriteLine($"Sending TXT record with settings: {settingsText}");
+
+                        // Add a TXT record with our settings
+                        // The Python code expects a single string that it will parse
+                        var txtRecord = new TXTRecord
+                        {
+                            Name = question.Name,
+                            Strings = new List<string> { settingsText },
+                            TTL = TimeSpan.FromMinutes(5) // 5 minute TTL
+                        };
+
+                        // Debug the TXT record format
+                        Trace.WriteLine($"TXT record details - Name: {txtRecord.Name}, TTL: {txtRecord.TTL}, Strings count: {txtRecord.Strings.Count}");
+                        foreach (var str in txtRecord.Strings)
+                        {
+                            Trace.WriteLine($"TXT string: '{str}' (Length: {str.Length})");
+                        }
+                        response.Answers.Add(txtRecord);
+
+                        // For settings.scream.local, ensure we send both multicast and unicast responses
+                        if (isSettingsLocalQuery)
+                        {
+                            // Send via multicast service
+                            mdnsService?.SendAnswer(response);
+
+                            // Also send an explicit multicast response
+                            SendMulticastResponse(response, localIp);
+
+                            // And send a direct unicast response to the requester
+                            SendDirectResponse(response, remoteEndPoint.Address, localIp, remoteEndPoint.Port);
+
+                            Trace.WriteLine("Sent both multicast and unicast responses for settings.scream.local");
+                        }
+                        else
+                        {
+                            // For other queries, use the standard approach
+                            mdnsService?.SendAnswer(response);
+                            SendDirectResponse(response, remoteEndPoint.Address, localIp, remoteEndPoint.Port);
+                        }
+                    }
+                    // Handle PTR record queries
+                    else if (questionType == 12) // PTR record
+                    {
+                        IPEndPoint remoteEndPoint = e.RemoteEndPoint;
+                        Trace.WriteLine($"Received PTR query from {remoteEndPoint.Address} for {question.Name}");
+
+                        // Get the IP address for the interface that would be used to reach the remote endpoint
+                        IPAddress localIp = GetLocalIPForRemote(remoteEndPoint.Address);
+
+                        // Create a response message
+                        var response = new Message
+                        {
+                            Id = e.Message.Id,
+                            QR = true,     // This is a response
+                            Opcode = 0,    // Standard query
+                            AA = true,     // Authoritative answer
+                            TC = false,    // Not truncated
+                            RD = false,    // Recursion not desired
+                            RA = false,    // Recursion not available
+                            Z = 0          // Reserved bits should be zero
+                        };
+
+                        // Copy the question
+                        response.Questions.Add(question);
+
+                        // Add a PTR record pointing to our service
+                        var ptrRecord = new PTRRecord
+                        {
+                            Name = question.Name,
+                            DomainName = new DomainName(MDNS_SERVICE_NAME),
+                            TTL = TimeSpan.FromHours(1) // 1 hour TTL
+                        };
+                        response.Answers.Add(ptrRecord);
+
+                        // Send via multicast service
+                        mdnsService?.SendAnswer(response);
+
+                        // Also send an explicit multicast response
+                        SendMulticastResponse(response, localIp);
+
+                        // And send a direct unicast response to the requester
+                        SendDirectResponse(response, remoteEndPoint.Address, localIp, remoteEndPoint.Port);
+
+                        Trace.WriteLine($"Sent PTR record response to {remoteEndPoint.Address}");
+                    }
                 }
             }
             catch (Exception ex)
@@ -437,26 +1028,65 @@ namespace ScreamRouterDesktop
             }
         }
 
-        private void SendDirectResponse(Message response, IPAddress remoteAddress, IPAddress localIp)
+        // Send a response directly to the multicast address
+        private void SendMulticastResponse(Message response, IPAddress localIp)
         {
             try
             {
+                using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
+                {
+                    // Set socket options for multicast
+                    socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                    socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.MulticastTimeToLive, 255);
+                    socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.MulticastInterface, localIp.GetAddressBytes());
+
+                    // Bind to the mDNS port on the local IP
+                    socket.Bind(new IPEndPoint(IPAddress.Any, 0));
+
+                    // Join the multicast group
+                    socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.AddMembership,
+                        new MulticastOption(IPAddress.Parse("224.0.0.251"), localIp));
+
+                    // Convert to bytes
+                    byte[] buffer = response.ToByteArray();
+
+                    // Send to the multicast address on the mDNS port
+                    socket.SendTo(buffer, new IPEndPoint(IPAddress.Parse("224.0.0.251"), MDNS_PORT));
+                    Trace.WriteLine($"Explicit multicast response sent to 224.0.0.251:{MDNS_PORT} from {localIp}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"Error sending multicast response: {ex.Message}");
+            }
+        }
+
+        // Always send a direct unicast response regardless of query type
+        private void SendDirectResponse(Message response, IPAddress remoteAddress, IPAddress localIp, int clientPort = MDNS_PORT)
+        {
+            try
+            {
+                // Send a direct unicast response to the requester
                 using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
                 {
                     // Set socket options
                     socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
                     socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.MulticastTimeToLive, 255);
 
-                    // Bind to the mDNS port
-                    socket.Bind(new IPEndPoint(localIp, 0)); // Use any available port for sending
+                    // CRITICAL FIX: Bind to port 5353 - this ensures responses come FROM port 5353
+                    // Standard DNS clients expect responses to come from the same port they sent to
+                    socket.Bind(new IPEndPoint(IPAddress.Any, MDNS_PORT));
+                    
+                    // Set the outgoing interface
+                    socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.MulticastInterface, 
+                        localIp.GetAddressBytes());
 
                     // Convert to bytes
                     byte[] buffer = response.ToByteArray();
 
-                    // Send directly to the requester
-                    socket.SendTo(buffer, new IPEndPoint(remoteAddress, MDNS_PORT));
-
-                    Trace.WriteLine($"Direct UDP response sent to {remoteAddress}:{MDNS_PORT}");
+                    // Send directly to the requester's port (either the client's source port or mDNS port)
+                    socket.SendTo(buffer, new IPEndPoint(remoteAddress, clientPort));
+                    Trace.WriteLine($"Direct unicast response sent to {remoteAddress}:{clientPort} from {localIp}:{MDNS_PORT}");
                 }
             }
             catch (Exception ex)
@@ -482,8 +1112,6 @@ namespace ScreamRouterDesktop
                 return IPAddress.Loopback;
             }
         }
-
-        // ListenForAudioSettingsQueries removed as it's handled by DnsServer now
 
         public class AudioSettings
         {

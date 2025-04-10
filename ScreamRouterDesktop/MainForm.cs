@@ -49,11 +49,11 @@ namespace ScreamRouterDesktop
             // Windows 11 check (build 22000+)
             if (Environment.OSVersion.Version.Major >= 10 && Environment.OSVersion.Version.Build >= 22000)
                 return true;
-            
+
             // Windows 10 build 20348+ check
             if (Environment.OSVersion.Version.Major == 10 && Environment.OSVersion.Version.Build >= 20348)
                 return true;
-            
+
             return false;
         }
 
@@ -118,14 +118,14 @@ namespace ScreamRouterDesktop
         private void InitializeCustomComponents()
         {
             this.Text = "ScreamRouter Desktop Configuration";
-            
+
             // Use DPI-aware sizing
             float scaleFactor = this.DeviceDpi / 96f;
             int baseWidth = 525;
             int baseHeight = 950; // Increased height for better spacing
             int padding = (int)(20 * scaleFactor);
             int sectionSpacing = (int)(30 * scaleFactor);
-            
+
             this.ClientSize = new Size((int)(baseWidth * scaleFactor), (int)(baseHeight * scaleFactor));
 
             TableLayoutPanel mainPanel = new TableLayoutPanel
@@ -137,7 +137,7 @@ namespace ScreamRouterDesktop
                 AutoSize = true
             };
             mainPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            
+
             // Set consistent row heights
             mainPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             mainPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -168,20 +168,20 @@ namespace ScreamRouterDesktop
                 Text = "Server URL:",
                 AutoSize = true,
                 Font = new Font(this.Font.FontFamily, 9, FontStyle.Regular),
-                Margin = new Padding(0, 0, 0, padding/2)
+                Margin = new Padding(0, 0, 0, padding / 2)
             };
             urlPanel.Controls.Add(urlLabel);
 
             urlTextBox = new TextBox
             {
                 Width = (int)(450 * scaleFactor),
-                Margin = new Padding(0, 0, 0, padding/2)
+                Margin = new Padding(0, 0, 0, padding / 2)
             };
             urlPanel.Controls.Add(urlTextBox);
 
             urlGroupBox.Controls.Add(urlPanel);
             mainPanel.Controls.Add(urlGroupBox, 0, 0);
- 
+
             // Buttons Panel
             FlowLayoutPanel buttonsPanel = new FlowLayoutPanel
             {
@@ -243,29 +243,29 @@ namespace ScreamRouterDesktop
             {
                 Text = "Sender Mode:",
                 AutoSize = true,
-                Margin = new Padding(0, 0, 0, padding/4)
+                Margin = new Padding(0, 0, 0, padding / 4)
             };
             screamPanel.Controls.Add(senderModeLabel);
-            
+
             // Standard Sender Radio Button
             standardSenderRadioButton = new RadioButton
             {
                 Name = "standardSenderRadioButton",
                 Text = "Standard Sender",
                 AutoSize = true,
-                Margin = new Padding(0, 0, 0, padding/4)
+                Margin = new Padding(0, 0, 0, padding / 4)
             };
             standardSenderRadioButton.CheckedChanged += StandardSenderRadioButton_CheckedChanged;
             screamPanel.Controls.Add(standardSenderRadioButton);
 
             Label senderIpLabel = new Label { Text = "Destination IP:", AutoSize = true };
-            senderIpTextBox = new TextBox 
-            { 
+            senderIpTextBox = new TextBox
+            {
                 Name = "senderIpTextBox",
-                Width = (int)(200 * scaleFactor), 
-                Margin = new Padding(0, 0, padding, padding/2) 
+                Width = (int)(200 * scaleFactor),
+                Margin = new Padding(0, 0, padding, padding / 2)
             };
-            senderIpTextBox.TextChanged += (s, e) => {};
+            senderIpTextBox.TextChanged += (s, e) => { };
             FlowLayoutPanel senderIpPanel = new FlowLayoutPanel
             {
                 FlowDirection = FlowDirection.LeftToRight,
@@ -276,16 +276,16 @@ namespace ScreamRouterDesktop
             screamPanel.Controls.Add(senderIpPanel);
 
             Label senderPortLabel = new Label { Text = "Destination Port:", AutoSize = true };
-            senderPortNumeric = new NumericUpDown 
-            { 
+            senderPortNumeric = new NumericUpDown
+            {
                 Name = "senderPortNumeric",
                 Minimum = 1,
                 Maximum = 65535,
                 Value = 16401,
                 Width = (int)(80 * scaleFactor),
-                Margin = new Padding(0, 0, padding, padding/2)
+                Margin = new Padding(0, 0, padding, padding / 2)
             };
-            senderPortNumeric.ValueChanged += (s, e) => {};
+            senderPortNumeric.ValueChanged += (s, e) => { };
             FlowLayoutPanel senderPortPanel = new FlowLayoutPanel
             {
                 FlowDirection = FlowDirection.LeftToRight,
@@ -302,7 +302,7 @@ namespace ScreamRouterDesktop
                 AutoSize = true,
                 Margin = new Padding(0, 0, 0, padding)
             };
-            multicastCheckBox.CheckedChanged += (s, e) => {};
+            multicastCheckBox.CheckedChanged += (s, e) => { };
             screamPanel.Controls.Add(multicastCheckBox);
 
             // Per-Process Sender Settings
@@ -311,7 +311,7 @@ namespace ScreamRouterDesktop
                 Name = "perProcessSenderRadioButton",
                 Text = "Per-Process Sender (Only works with ScreamRouter)",
                 AutoSize = true,
-                Margin = new Padding(0, 0, 0, padding/4)
+                Margin = new Padding(0, 0, 0, padding / 4)
             };
             perProcessSenderRadioButton.CheckedChanged += PerProcessSenderRadioButton_CheckedChanged;
             screamPanel.Controls.Add(perProcessSenderRadioButton);
@@ -319,18 +319,18 @@ namespace ScreamRouterDesktop
             // Check if system is compatible with per-process sender
             bool isCompatible = IsCompatibleWithPerProcessSender();
             perProcessSenderRadioButton.Enabled = isCompatible;
-            
+
             // Per-Process Sender IP Setting
             Label perProcessIpLabel = new Label { Text = "Destination IP:", AutoSize = true };
             perProcessSenderIpTextBox = new TextBox
             {
                 Name = "perProcessSenderIpTextBox",
                 Width = (int)(200 * scaleFactor),
-                Margin = new Padding(0, 0, padding, padding/2),
+                Margin = new Padding(0, 0, padding, padding / 2),
                 Text = "127.0.0.1",
                 Enabled = isCompatible
             };
-            perProcessSenderIpTextBox.TextChanged += (s, e) => {};
+            perProcessSenderIpTextBox.TextChanged += (s, e) => { };
             FlowLayoutPanel perProcessIpPanel = new FlowLayoutPanel
             {
                 FlowDirection = FlowDirection.LeftToRight,
@@ -339,7 +339,7 @@ namespace ScreamRouterDesktop
             };
             perProcessIpPanel.Controls.AddRange(new Control[] { perProcessIpLabel, perProcessSenderIpTextBox });
             screamPanel.Controls.Add(perProcessIpPanel);
-            
+
             // Per-Process Sender Port Setting
             Label perProcessPortLabel = new Label { Text = "Destination Port:", AutoSize = true };
             perProcessSenderPortNumeric = new NumericUpDown
@@ -349,10 +349,10 @@ namespace ScreamRouterDesktop
                 Maximum = 65535,
                 Value = 16402,
                 Width = (int)(80 * scaleFactor),
-                Margin = new Padding(0, 0, padding, padding/2),
+                Margin = new Padding(0, 0, padding, padding / 2),
                 Enabled = isCompatible
             };
-            perProcessSenderPortNumeric.ValueChanged += (s, e) => {};
+            perProcessSenderPortNumeric.ValueChanged += (s, e) => { };
             FlowLayoutPanel perProcessPortPanel = new FlowLayoutPanel
             {
                 FlowDirection = FlowDirection.LeftToRight,
@@ -361,7 +361,7 @@ namespace ScreamRouterDesktop
             };
             perProcessPortPanel.Controls.AddRange(new Control[] { perProcessPortLabel, perProcessSenderPortNumeric });
             screamPanel.Controls.Add(perProcessPortPanel);
-            
+
             // Show compatibility warning if needed
             if (!isCompatible)
             {
@@ -381,9 +381,9 @@ namespace ScreamRouterDesktop
                 Name = "receiverEnabledCheckBox",
                 Text = "Enable Scream Receiver",
                 AutoSize = true,
-                Margin = new Padding(0, 0, 0, padding/2)
+                Margin = new Padding(0, 0, 0, padding / 2)
             };
-            receiverEnabledCheckBox.CheckedChanged += (s, e) => {};
+            receiverEnabledCheckBox.CheckedChanged += (s, e) => { };
             screamPanel.Controls.Add(receiverEnabledCheckBox);
 
             Label receiverPortLabel = new Label { Text = "Inbound Port:", AutoSize = true };
@@ -396,7 +396,7 @@ namespace ScreamRouterDesktop
                 Width = (int)(80 * scaleFactor),
                 Margin = new Padding(0, 0, padding, padding)
             };
-            receiverPortNumeric.ValueChanged += (s, e) => {};
+            receiverPortNumeric.ValueChanged += (s, e) => { };
             FlowLayoutPanel receiverPortPanel = new FlowLayoutPanel
             {
                 FlowDirection = FlowDirection.LeftToRight,
@@ -432,7 +432,7 @@ namespace ScreamRouterDesktop
                 Text = "The following audio settings will be advertised via mDNS when the receiver is enabled:",
                 AutoSize = true,
                 Font = new Font(this.Font.FontFamily, 9, FontStyle.Regular),
-                Margin = new Padding(0, 0, 0, padding/2)
+                Margin = new Padding(0, 0, 0, padding / 2)
             };
             audioInfoPanel.Controls.Add(audioInfoLabel);
 
@@ -442,7 +442,7 @@ namespace ScreamRouterDesktop
                 Name = "bitDepthLabel",
                 Text = "Bit Depth: -- (Windows returns audio in 32-bit regardless of config)",
                 AutoSize = true,
-                Margin = new Padding(0, 0, 0, padding/4)
+                Margin = new Padding(0, 0, 0, padding / 4)
             };
             audioInfoPanel.Controls.Add(bitDepthLabel);
 
@@ -451,7 +451,7 @@ namespace ScreamRouterDesktop
                 Name = "sampleRateLabel",
                 Text = "Sample Rate: --",
                 AutoSize = true,
-                Margin = new Padding(0, 0, 0, padding/4)
+                Margin = new Padding(0, 0, 0, padding / 4)
             };
             audioInfoPanel.Controls.Add(sampleRateLabel);
 
@@ -460,7 +460,7 @@ namespace ScreamRouterDesktop
                 Name = "channelsLabel",
                 Text = "Channels: --",
                 AutoSize = true,
-                Margin = new Padding(0, 0, 0, padding/4)
+                Margin = new Padding(0, 0, 0, padding / 4)
             };
             audioInfoPanel.Controls.Add(channelsLabel);
 
@@ -469,7 +469,7 @@ namespace ScreamRouterDesktop
                 Name = "channelLayoutLabel",
                 Text = "Channel Layout: --",
                 AutoSize = true,
-                Margin = new Padding(0, 0, 0, padding/4)
+                Margin = new Padding(0, 0, 0, padding / 4)
             };
             audioInfoPanel.Controls.Add(channelLayoutLabel);
 
@@ -499,7 +499,7 @@ namespace ScreamRouterDesktop
                 Text = "Update Mode:",
                 AutoSize = true,
                 Font = new Font(this.Font.FontFamily, 9, FontStyle.Regular),
-                Margin = new Padding(0, 0, 0, padding/2)
+                Margin = new Padding(0, 0, 0, padding / 2)
             };
             appSettingsPanel.Controls.Add(updateLabel);
 
@@ -507,7 +507,7 @@ namespace ScreamRouterDesktop
             {
                 Width = (int)(450 * scaleFactor),
                 DropDownStyle = ComboBoxStyle.DropDownList,
-                Margin = new Padding(0, 0, 0, padding/2)
+                Margin = new Padding(0, 0, 0, padding / 2)
             };
             updateModeComboBox.Items.AddRange(new string[] {
                 "Do not check for updates",
@@ -539,18 +539,18 @@ namespace ScreamRouterDesktop
         {
             // Get the current audio settings from ZeroconfService
             var audioSettings = screamSettings?.GetCurrentAudioSettings();
-            
+
             if (audioSettings != null)
             {
                 if (bitDepthLabel != null)
                     bitDepthLabel.Text = $"Bit Depth: {audioSettings.BitDepth} bits";
-                
+
                 if (sampleRateLabel != null)
                     sampleRateLabel.Text = $"Sample Rate: {audioSettings.SampleRate} Hz";
-                
+
                 if (channelsLabel != null)
                     channelsLabel.Text = $"Channels: {audioSettings.Channels}";
-                
+
                 if (channelLayoutLabel != null)
                     channelLayoutLabel.Text = $"Channel Layout: {audioSettings.ChannelLayout}";
             }
@@ -559,13 +559,13 @@ namespace ScreamRouterDesktop
                 // No audio settings available
                 if (bitDepthLabel != null)
                     bitDepthLabel.Text = "Bit Depth: --";
-                
+
                 if (sampleRateLabel != null)
                     sampleRateLabel.Text = "Sample Rate: --";
-                
+
                 if (channelsLabel != null)
                     channelsLabel.Text = "Channels: --";
-                
+
                 if (channelLayoutLabel != null)
                     channelLayoutLabel.Text = "Channel Layout: --";
             }
@@ -685,7 +685,7 @@ namespace ScreamRouterDesktop
         {
             StartMenuPinning.PinToStartMenu();
         }
-        
+
         private void PinToNotificationAreaButton_Click(object? sender, EventArgs e)
         {
             NotificationAreaPinning.ShowPinInstructionsDialog();
@@ -702,7 +702,7 @@ namespace ScreamRouterDesktop
                     webInterfaceForm.Show();
                     webInterfaceForm.Hide();
                 }
-                
+
                 if (webInterfaceForm.Visible)
                     webInterfaceForm.Hide();
                 else
@@ -732,7 +732,12 @@ namespace ScreamRouterDesktop
 
         private void SaveConfiguration()
         {
-            Registry.SetValue(@"HKEY_CURRENT_USER\Software\ScreamRouterDesktop", "Url", urlTextBox?.Text ?? "");
+            // Save URL to ScreamSettings instead of directly to registry
+            if (urlTextBox != null)
+            {
+                screamSettings.WebInterfaceUrl = urlTextBox.Text;
+            }
+
             Registry.SetValue(@"HKEY_CURRENT_USER\Software\ScreamRouterDesktop", "IpPort", ipPortTextBox?.Text ?? "");
             if (updateModeComboBox != null)
             {
@@ -744,22 +749,22 @@ namespace ScreamRouterDesktop
             screamSettings.SenderIP = senderIpTextBox?.Text ?? "127.0.0.1";
             screamSettings.SenderPort = (int)(senderPortNumeric?.Value ?? 16401);
             screamSettings.SenderMulticast = multicastCheckBox?.Checked ?? false;
-            
+
             // Save Per-Process Sender settings
             screamSettings.PerProcessSenderEnabled = perProcessSenderRadioButton?.Checked ?? false;
             screamSettings.PerProcessSenderIP = perProcessSenderIpTextBox?.Text ?? "127.0.0.1";
             screamSettings.PerProcessSenderPort = (int)(perProcessSenderPortNumeric?.Value ?? 16402);
-            
+
             screamSettings.ReceiverEnabled = receiverEnabledCheckBox?.Checked ?? false;
             screamSettings.ReceiverPort = (int)(receiverPortNumeric?.Value ?? 4010);
             if (startAtBootCheckBox != null)
             {
                 screamSettings.StartAtBoot = startAtBootCheckBox.Checked;
             }
-            
+
             screamSettings.Save();
             screamSettings.RestartProcesses();
-            
+
             // Update audio info display
             UpdateAudioInfo();
         }
@@ -772,13 +777,13 @@ namespace ScreamRouterDesktop
                 if (senderIpTextBox != null) senderIpTextBox.Enabled = true;
                 if (senderPortNumeric != null) senderPortNumeric.Enabled = true;
                 if (multicastCheckBox != null) multicastCheckBox.Enabled = true;
-                
+
                 // Disable per-process sender controls
                 if (perProcessSenderIpTextBox != null) perProcessSenderIpTextBox.Enabled = false;
                 if (perProcessSenderPortNumeric != null) perProcessSenderPortNumeric.Enabled = false;
             }
         }
-        
+
         private void PerProcessSenderRadioButton_CheckedChanged(object? sender, EventArgs e)
         {
             if (perProcessSenderRadioButton?.Checked == true && IsCompatibleWithPerProcessSender())
@@ -787,7 +792,7 @@ namespace ScreamRouterDesktop
                 if (senderIpTextBox != null) senderIpTextBox.Enabled = false;
                 if (senderPortNumeric != null) senderPortNumeric.Enabled = false;
                 if (multicastCheckBox != null) multicastCheckBox.Enabled = false;
-                
+
                 // Enable per-process sender controls
                 if (perProcessSenderIpTextBox != null) perProcessSenderIpTextBox.Enabled = true;
                 if (perProcessSenderPortNumeric != null) perProcessSenderPortNumeric.Enabled = true;
@@ -797,64 +802,71 @@ namespace ScreamRouterDesktop
 
         private void LoadConfiguration()
         {
+
+            screamSettings.Load();
+            // Load URL from ScreamSettings instead of directly from registry
             if (urlTextBox != null)
-                urlTextBox.Text = (string?)Registry.GetValue(@"HKEY_CURRENT_USER\Software\ScreamRouterDesktop", "Url", "") ?? "";
+                urlTextBox.Text = screamSettings.WebInterfaceUrl;
+
             if (ipPortTextBox != null)
                 ipPortTextBox.Text = (string?)Registry.GetValue(@"HKEY_CURRENT_USER\Software\ScreamRouterDesktop", "IpPort", "") ?? "";
 
             if (string.IsNullOrEmpty(ipPortTextBox?.Text))
                 ResolveHostname();
 
-            // Load Scream settings
-            screamSettings.Load();
-            
             // Load standard sender settings
             if (standardSenderRadioButton != null)
                 standardSenderRadioButton.Checked = screamSettings.SenderEnabled;
-            if (senderIpTextBox != null) {
+            if (senderIpTextBox != null)
+            {
                 senderIpTextBox.Text = screamSettings.SenderIP;
                 senderIpTextBox.Enabled = screamSettings.SenderEnabled;
             }
-            if (senderPortNumeric != null) {
+            if (senderPortNumeric != null)
+            {
                 senderPortNumeric.Value = screamSettings.SenderPort;
                 senderPortNumeric.Enabled = screamSettings.SenderEnabled;
             }
-            if (multicastCheckBox != null) {
+            if (multicastCheckBox != null)
+            {
                 multicastCheckBox.Checked = screamSettings.SenderMulticast;
                 multicastCheckBox.Enabled = screamSettings.SenderEnabled;
             }
-            
+
             // Load per-process sender settings
             bool isCompatible = IsCompatibleWithPerProcessSender();
-            if (perProcessSenderRadioButton != null) {
+            if (perProcessSenderRadioButton != null)
+            {
                 perProcessSenderRadioButton.Checked = screamSettings.PerProcessSenderEnabled;
                 perProcessSenderRadioButton.Enabled = isCompatible;
             }
-            if (perProcessSenderIpTextBox != null) {
+            if (perProcessSenderIpTextBox != null)
+            {
                 perProcessSenderIpTextBox.Text = screamSettings.PerProcessSenderIP;
                 perProcessSenderIpTextBox.Enabled = screamSettings.PerProcessSenderEnabled && isCompatible;
             }
-            if (perProcessSenderPortNumeric != null) {
+            if (perProcessSenderPortNumeric != null)
+            {
                 perProcessSenderPortNumeric.Value = screamSettings.PerProcessSenderPort;
                 perProcessSenderPortNumeric.Enabled = screamSettings.PerProcessSenderEnabled && isCompatible;
             }
-            
+
             // Load receiver settings
             if (receiverEnabledCheckBox != null)
                 receiverEnabledCheckBox.Checked = screamSettings.ReceiverEnabled;
             if (receiverPortNumeric != null)
                 receiverPortNumeric.Value = screamSettings.ReceiverPort;
-            
+
             // Update the start at boot checkbox based on the actual Windows startup registry
             if (startAtBootCheckBox != null)
                 startAtBootCheckBox.Checked = screamSettings.StartAtBoot;
 
             // Start processes if enabled
             screamSettings.StartProcesses();
-            
+
             // Update audio info display
             UpdateAudioInfo();
-            
+
             // Create the WebInterfaceForm on load
             string url = urlTextBox?.Text ?? "";
             if (!string.IsNullOrEmpty(url))

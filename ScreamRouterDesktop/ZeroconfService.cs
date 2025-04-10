@@ -25,6 +25,7 @@ namespace ScreamRouterDesktop
         private UdpClient? queryClient;
         private CancellationTokenSource? cancellationTokenSource;
         private bool isRunning = false;
+        private string receiverID = string.Empty; // Field to store the ReceiverID
 
         // Windows Core Audio API imports for getting audio device information
         [DllImport("ole32.dll")]
@@ -128,6 +129,13 @@ namespace ScreamRouterDesktop
         {
             serviceName = new DomainName(MDNS_SERVICE_NAME);
         }
+        
+        // Method to set the ReceiverID from ScreamSettings
+        public void SetReceiverID(string id)
+        {
+            receiverID = id;
+            Trace.WriteLine($"ZeroconfService: ReceiverID set to {receiverID}");
+        }
 
         public void Start()
         {
@@ -159,9 +167,6 @@ namespace ScreamRouterDesktop
 
                 // Start the mDNS service
                 mdnsService.Start();
-
-                // Start listening for audio settings queries
-                Task.Run(() => ListenForAudioSettingsQueries(cancellationTokenSource.Token));
 
                 // Start a raw UDP packet dumper for debugging
                 Task.Run(() => DumpUdpPackets(cancellationTokenSource.Token));
@@ -236,57 +241,8 @@ namespace ScreamRouterDesktop
                                     // Handle TXT record queries for settings
                                     if (isSettingsQuery && questionType == DNS_TYPE_TXT)
                                     {
-                                        Trace.WriteLine($"UNICAST: Received settings TXT query from {senderEP}");
-
-                                        // Get current audio settings
-                                        var audioSettings = GetCurrentAudioSettings();
-                                        if (audioSettings == null)
-                                        {
-                                            Trace.WriteLine("UNICAST: Could not retrieve audio settings");
-                                            continue;
-                                        }
-
-                                        // Create a response message
-                                        var response = new Message
-                                        {
-                                            Id = message.Id,
-                                            QR = true,     // This is a response
-                                            Opcode = 0,    // Standard query
-                                            AA = true,     // Authoritative answer
-                                            TC = false,    // Not truncated
-                                            RD = false,    // Recursion not desired
-                                            RA = false,    // Recursion not available
-                                            Z = 0          // Reserved bits should be zero
-                                        };
-
-                                        // Copy the question
-                                        response.Questions.Add(question);
-
-                                        // Format settings as key=value pairs separated by semicolons
-                                        string settingsText = string.Join(";",
-                                            $"bit_depth={audioSettings.BitDepth}",
-                                            $"sample_rate={audioSettings.SampleRate}",
-                                            $"channels={audioSettings.Channels}",
-                                            $"channel_layout={audioSettings.ChannelLayout}"
-                                        );
-
-                                        Trace.WriteLine($"UNICAST: Sending TXT record with settings: {settingsText}");
-
-                                        // Add a TXT record with our settings
-                                        var txtRecord = new TXTRecord
-                                        {
-                                            Name = question.Name,
-                                            Strings = new List<string> { settingsText },
-                                            TTL = TimeSpan.FromMinutes(5) // 5 minute TTL
-                                        };
-                                        response.Answers.Add(txtRecord);
-
-                                        // Send the response
-                                        byte[] responseData = response.ToByteArray();
-                                        socket.SendTo(responseData, senderEP);
-
-                                        Trace.WriteLine($"UNICAST: Sent TXT record response to {senderEP}");
                                     }
+                                    // Removed TXT record handling from here - now done by DnsServer.cs
                                 }
                             }
                             catch (Exception ex)
@@ -472,77 +428,7 @@ namespace ScreamRouterDesktop
                         // Also send directly to the requester using a raw UDP socket
                         SendDirectResponse(response, remoteEndPoint.Address, localIp);
                     }
-                    else if (isSettingsQuery && ((int)question.Type) == DNS_TYPE_TXT)
-                    {
-                        IPEndPoint remoteEndPoint = e.RemoteEndPoint;
-                        Trace.WriteLine($"Received settings query from {remoteEndPoint.Address} for {question.Name}");
-
-                        // Get the IP address for the interface that would be used to reach the remote endpoint
-                        IPAddress localIp = GetLocalIPForRemote(remoteEndPoint.Address);
-
-                        // Get current audio settings
-                        var audioSettings = GetCurrentAudioSettings();
-                        if (audioSettings == null)
-                        {
-                            Trace.WriteLine("Could not retrieve audio settings");
-                            return;
-                        }
-
-                        Trace.WriteLine($"Responding with audio settings: bit_depth={audioSettings.BitDepth}, " +
-                                       $"sample_rate={audioSettings.SampleRate}, channels={audioSettings.Channels}, " +
-                                       $"channel_layout={audioSettings.ChannelLayout}");
-
-                        // Create a response message
-                        var response = new Message
-                        {
-                            Id = e.Message.Id,
-                            QR = true,     // This is a response
-                            Opcode = 0,    // Standard query
-                            AA = true,     // Authoritative answer
-                            TC = false,    // Not truncated
-                            RD = false,    // Recursion not desired
-                            RA = false,    // Recursion not available
-                            Z = 0          // Reserved bits should be zero
-                        };
-
-                        // Copy the question
-                        response.Questions.Add(question);
-
-                        // Format settings as key=value pairs separated by semicolons
-                        // This matches exactly what the Python code expects
-                        string settingsText = string.Join(";",
-                            $"bit_depth={audioSettings.BitDepth}",
-                            $"sample_rate={audioSettings.SampleRate}",
-                            $"channels={audioSettings.Channels}",
-                            $"channel_layout={audioSettings.ChannelLayout}"
-                        );
-
-                        // Log what we're sending
-                        Trace.WriteLine($"Sending TXT record with settings: {settingsText}");
-
-                        // Add a TXT record with our settings
-                        // The Python code expects a single string that it will parse
-                        var txtRecord = new TXTRecord
-                        {
-                            Name = question.Name,
-                            Strings = new List<string> { settingsText },
-                            TTL = TimeSpan.FromMinutes(5) // 5 minute TTL
-                        };
-
-                        // Debug the TXT record format
-                        Trace.WriteLine($"TXT record details - Name: {txtRecord.Name}, TTL: {txtRecord.TTL}, Strings count: {txtRecord.Strings.Count}");
-                        foreach (var str in txtRecord.Strings)
-                        {
-                            Trace.WriteLine($"TXT string: '{str}' (Length: {str.Length})");
-                        }
-                        response.Answers.Add(txtRecord);
-
-                        // Send via multicast service
-                        mdnsService?.SendAnswer(response);
-
-                        // Also send directly to the requester
-                        SendDirectResponse(response, remoteEndPoint.Address, localIp);
-                    }
+                    // Removed TXT record handling from here - now done by DnsServer.cs
                 }
             }
             catch (Exception ex)
@@ -597,46 +483,7 @@ namespace ScreamRouterDesktop
             }
         }
 
-        private async Task ListenForAudioSettingsQueries(CancellationToken cancellationToken)
-        {
-            try
-            {
-                while (!cancellationToken.IsCancellationRequested && queryClient != null)
-                {
-                    var result = await queryClient.ReceiveAsync(cancellationToken);
-                    var receivedBytes = result.Buffer;
-                    var remoteEndPoint = result.RemoteEndPoint;
-
-                    string receivedData = Encoding.ASCII.GetString(receivedBytes);
-                    if (receivedData == "query_audio_settings")
-                    {
-                        // Get current audio settings
-                        var audioSettings = GetCurrentAudioSettings();
-                        if (audioSettings != null)
-                        {
-                            // Format response as key=value pairs separated by semicolons
-                            string response = string.Join(";",
-                                $"bit_depth={audioSettings.BitDepth}",
-                                $"sample_rate={audioSettings.SampleRate}",
-                                $"channels={audioSettings.Channels}",
-                                $"channel_layout={audioSettings.ChannelLayout}"
-                            );
-
-                            byte[] responseBytes = Encoding.ASCII.GetBytes(response);
-                            await queryClient.SendAsync(responseBytes, responseBytes.Length, remoteEndPoint);
-                        }
-                    }
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected when cancellation is requested
-            }
-            catch (Exception ex)
-            {
-                Trace.WriteLine($"Error in audio settings listener: {ex.Message}");
-            }
-        }
+        // ListenForAudioSettingsQueries removed as it's handled by DnsServer now
 
         public class AudioSettings
         {

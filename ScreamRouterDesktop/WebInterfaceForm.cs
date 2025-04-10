@@ -529,10 +529,19 @@ namespace ScreamRouterDesktop
                     });
                 };
 
+                // Add handler for messages from the new WebView
+                newWebView.CoreWebView2.WebMessageReceived += (messageSender, messageArgs) => NewWebView_WebMessageReceived(newForm, messageArgs);
+
                 // Inject JavaScript function to detect if a point is over the body (transparent) or another element
+                // Also override window.close to send a message back to the host
                 string jsCode = @"
+                // Override window.close to post a message instead
+                window.close = function() {
+                    window.chrome.webview.postMessage({ action: 'close' });
+                };
+
                 function isPointOverBody(x, y) {
-                    console.log('check');
+                    // console.log('check'); // Removed console log for cleaner output
                     // Get the element at the specified point
                     const element = document.elementFromPoint(x, y);                        
                     // If there's no element or it's the body/html, it's over body
@@ -546,6 +555,38 @@ namespace ScreamRouterDesktop
             };
 
             newForm.Show();
+        }
+
+        // Handles messages received from popup WebView instances
+        private void NewWebView_WebMessageReceived(Form windowToClose, CoreWebView2WebMessageReceivedEventArgs args)
+        {
+            // Attempt to parse the message as JSON
+            try
+            {
+                // Using System.Text.Json for parsing
+                using (var jsonDoc = System.Text.Json.JsonDocument.Parse(args.WebMessageAsJson))
+                {
+                    if (jsonDoc.RootElement.TryGetProperty("action", out var actionProperty) &&
+                        actionProperty.ValueKind == System.Text.Json.JsonValueKind.String &&
+                        actionProperty.GetString() == "close")
+                    {
+                        // If the action is 'close', close the associated form
+                        windowToClose.Invoke((MethodInvoker)delegate {
+                            windowToClose.Close();
+                        });
+                    }
+                }
+            }
+            catch (System.Text.Json.JsonException ex)
+            {
+                // Log or handle cases where the message is not valid JSON
+                Debug.WriteLine($"Error parsing WebMessageAsJson: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                // Catch other potential exceptions
+                Debug.WriteLine($"Error in NewWebView_WebMessageReceived: {ex.Message}");
+            }
         }
     }
 }

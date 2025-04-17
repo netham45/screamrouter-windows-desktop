@@ -121,121 +121,91 @@ namespace ScreamRouterDesktop
 
             // Use DPI-aware sizing
             float scaleFactor = this.DeviceDpi / 96f;
+            // If scaleFactor is less than 1 (e.g., lower DPI), clamp it to 1 to avoid making things too small.
+            if (scaleFactor < 1.0f) scaleFactor = 1.0f;
+
             int baseWidth = 525;
-            int baseHeight = 950; // Increased height for better spacing
-            int padding = (int)(20 * scaleFactor);
-            int sectionSpacing = (int)(30 * scaleFactor);
+            // Increased height slightly to better accommodate content without AutoSize
+            int baseHeight = 700;
+            int padding = (int)(10 * scaleFactor);
+            int controlSpacing = (int)(5 * scaleFactor);
+            int sectionSpacing = (int)(15 * scaleFactor);
 
-            this.ClientSize = new Size((int)(baseWidth * scaleFactor), (int)(baseHeight * scaleFactor));
+            // Set AutoScaleMode for proper DPI scaling behavior
+            this.AutoScaleMode = AutoScaleMode.Dpi;
 
+            // Set scaled font for the form (controls should inherit)
+            this.Font = new Font(this.Font.FontFamily, 8.25f, this.Font.Style); // Base font size, AutoScaleMode handles scaling
+
+            // Disable AutoSize for the form, use fixed size based on scaling
+            this.AutoSize = false;
+            this.ClientSize = new Size((int)(baseWidth * scaleFactor), (int)(baseHeight * scaleFactor)); // Set fixed initial size
+
+
+            // Main layout panel
             TableLayoutPanel mainPanel = new TableLayoutPanel
             {
-                Dock = DockStyle.Fill,
                 Padding = new Padding(padding),
                 ColumnCount = 1,
-                RowCount = 5, // Increased to match our sections
-                AutoSize = true
+                RowCount = 2, // Row for TabControl, Row for Buttons
+                AutoSize = false, // Panel should fill the form
+                Dock = DockStyle.Fill // Ensure main panel fills the form
             };
             mainPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            // Let TabControl row expand, button row size to content
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // Tab control row fills available space
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));      // Button row sizes itself
 
-            // Set consistent row heights
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-
-            // URL Section
-            GroupBox urlGroupBox = new GroupBox
+            // Tab Control
+            TabControl settingsTabControl = new TabControl
             {
-                Text = "ScreamRouter Configuration",
-                Dock = DockStyle.Fill,
-                AutoSize = true,
-                Padding = new Padding(padding),
-                Margin = new Padding(0, 0, 0, sectionSpacing)
+                Dock = DockStyle.Fill, // Fill the top row of mainPanel
+                Margin = new Padding(0, 0, 0, sectionSpacing),
+                AutoSize = false // Do not AutoSize the TabControl itself
             };
+            // Removed event handler subscription
+
+            // --- Tab Page 1: ScreamRouter Configuration ---
+            TabPage urlTabPage = new TabPage("ScreamRouter");
+            settingsTabControl.TabPages.Add(urlTabPage);
 
             FlowLayoutPanel urlPanel = new FlowLayoutPanel
             {
                 FlowDirection = FlowDirection.TopDown,
-                AutoSize = true,
+                AutoSize = true, // Let panel size to content
                 WrapContents = false,
-                Dock = DockStyle.Fill
+                Dock = DockStyle.Fill, // Fill the tab page
+                Padding = new Padding(padding)
             };
 
             Label urlLabel = new Label
             {
                 Text = "Server URL:",
                 AutoSize = true,
-                Font = new Font(this.Font.FontFamily, 9, FontStyle.Regular),
-                Margin = new Padding(0, 0, 0, padding / 2)
+                Margin = new Padding(0, 0, 0, controlSpacing)
             };
             urlPanel.Controls.Add(urlLabel);
 
             urlTextBox = new TextBox
             {
-                Width = (int)(450 * scaleFactor),
-                Margin = new Padding(0, 0, 0, padding / 2)
+                Width = (int)(450 * scaleFactor), // Keep explicit width scaling
+                Margin = new Padding(0, 0, 0, controlSpacing)
             };
             urlPanel.Controls.Add(urlTextBox);
 
-            urlGroupBox.Controls.Add(urlPanel);
-            mainPanel.Controls.Add(urlGroupBox, 0, 0);
+            urlTabPage.Controls.Add(urlPanel);
 
-            // Buttons Panel
-            FlowLayoutPanel buttonsPanel = new FlowLayoutPanel
-            {
-                FlowDirection = FlowDirection.LeftToRight,
-                AutoSize = true,
-                Margin = new Padding(0, 0, 0, sectionSpacing),
-                WrapContents = false,
-                Dock = DockStyle.Fill
-            };
-
-            saveButton = new Button
-            {
-                Text = "Save Configuration",
-                Size = new Size((int)(150 * scaleFactor), (int)(30 * scaleFactor)),
-                Margin = new Padding(0, 0, padding, 0)
-            };
-            saveButton.Click += SaveButton_Click;
-            buttonsPanel.Controls.Add(saveButton);
-
-            openWebInterfaceButton = new Button
-            {
-                Text = "Open Web Interface",
-                Size = new Size((int)(150 * scaleFactor), (int)(30 * scaleFactor)),
-                Margin = new Padding(0, 0, padding, 0)
-            };
-            openWebInterfaceButton.Click += OpenWebInterfaceButton_Click;
-            buttonsPanel.Controls.Add(openWebInterfaceButton);
-
-            pinToNotificationAreaButton = new Button
-            {
-                Text = "Pin to Notification Area",
-                Size = new Size((int)(150 * scaleFactor), (int)(30 * scaleFactor))
-            };
-            pinToNotificationAreaButton.Click += PinToNotificationAreaButton_Click;
-            buttonsPanel.Controls.Add(pinToNotificationAreaButton);
-
-            mainPanel.Controls.Add(buttonsPanel, 0, 1);
-
-            // Scream Settings Section
-            GroupBox screamGroupBox = new GroupBox
-            {
-                Text = "Scream Audio Settings",
-                Dock = DockStyle.Fill,
-                AutoSize = true,
-                Padding = new Padding(padding),
-                Margin = new Padding(0, 0, 0, sectionSpacing)
-            };
+            // --- Tab Page 2: Scream Audio Settings ---
+            TabPage screamTabPage = new TabPage("Audio Transport");
+            settingsTabControl.TabPages.Add(screamTabPage);
 
             FlowLayoutPanel screamPanel = new FlowLayoutPanel
             {
                 FlowDirection = FlowDirection.TopDown,
-                AutoSize = true,
+                AutoSize = true, // Let panel size to content
                 WrapContents = false,
-                Dock = DockStyle.Fill
+                Dock = DockStyle.Fill, // Fill the tab page
+                Padding = new Padding(padding)
             };
 
             // Sender Settings
@@ -243,7 +213,7 @@ namespace ScreamRouterDesktop
             {
                 Text = "Sender Mode:",
                 AutoSize = true,
-                Margin = new Padding(0, 0, 0, padding / 4)
+                Margin = new Padding(0, 0, 0, controlSpacing)
             };
             screamPanel.Controls.Add(senderModeLabel);
 
@@ -253,65 +223,38 @@ namespace ScreamRouterDesktop
                 Name = "standardSenderRadioButton",
                 Text = "Standard Sender",
                 AutoSize = true,
-                Margin = new Padding(0, 0, 0, padding / 4)
+                Margin = new Padding(0, 0, 0, controlSpacing)
             };
             standardSenderRadioButton.CheckedChanged += StandardSenderRadioButton_CheckedChanged;
             screamPanel.Controls.Add(standardSenderRadioButton);
 
-            Label senderIpLabel = new Label { Text = "Destination IP:", AutoSize = true };
-            senderIpTextBox = new TextBox
-            {
-                Name = "senderIpTextBox",
-                Width = (int)(200 * scaleFactor),
-                Margin = new Padding(0, 0, padding, padding / 2)
-            };
-            senderIpTextBox.TextChanged += (s, e) => { };
-            FlowLayoutPanel senderIpPanel = new FlowLayoutPanel
+            // --- Standard Sender IP/Port Panel ---
+            FlowLayoutPanel standardSenderDetailsPanel = new FlowLayoutPanel
             {
                 FlowDirection = FlowDirection.LeftToRight,
                 AutoSize = true,
-                WrapContents = false
+                WrapContents = false,
+                Margin = new Padding(padding, 0, 0, controlSpacing) // Indent
             };
-            senderIpPanel.Controls.AddRange(new Control[] { senderIpLabel, senderIpTextBox });
-            screamPanel.Controls.Add(senderIpPanel);
+            Label senderIpLabel = new Label { Text = "Destination IP:", AutoSize = true, Margin = new Padding(0, controlSpacing / 2, controlSpacing, 0) };
+            senderIpTextBox = new TextBox { Name = "senderIpTextBox", Width = (int)(150 * scaleFactor), Margin = new Padding(0, 0, padding, 0) };
+            Label senderPortLabel = new Label { Text = "Port:", AutoSize = true, Margin = new Padding(0, controlSpacing / 2, controlSpacing, 0) };
+            senderPortNumeric = new NumericUpDown { Name = "senderPortNumeric", Minimum = 1, Maximum = 65535, Value = 16401, Width = (int)(70 * scaleFactor) };
+            standardSenderDetailsPanel.Controls.AddRange(new Control[] { senderIpLabel, senderIpTextBox, senderPortLabel, senderPortNumeric });
+            screamPanel.Controls.Add(standardSenderDetailsPanel);
 
-            Label senderPortLabel = new Label { Text = "Destination Port:", AutoSize = true };
-            senderPortNumeric = new NumericUpDown
-            {
-                Name = "senderPortNumeric",
-                Minimum = 1,
-                Maximum = 65535,
-                Value = 16401,
-                Width = (int)(80 * scaleFactor),
-                Margin = new Padding(0, 0, padding, padding / 2)
-            };
-            senderPortNumeric.ValueChanged += (s, e) => { };
-            FlowLayoutPanel senderPortPanel = new FlowLayoutPanel
-            {
-                FlowDirection = FlowDirection.LeftToRight,
-                AutoSize = true,
-                WrapContents = false
-            };
-            senderPortPanel.Controls.AddRange(new Control[] { senderPortLabel, senderPortNumeric });
-            screamPanel.Controls.Add(senderPortPanel);
-
-            multicastCheckBox = new CheckBox
-            {
-                Name = "multicastCheckBox",
-                Text = "Use Multicast",
-                AutoSize = true,
-                Margin = new Padding(0, 0, 0, padding)
-            };
-            multicastCheckBox.CheckedChanged += (s, e) => { };
+            // --- Standard Sender Multicast Checkbox ---
+            multicastCheckBox = new CheckBox { Name = "multicastCheckBox", Text = "Use Multicast", AutoSize = true, Margin = new Padding(padding, 0, 0, padding) };
             screamPanel.Controls.Add(multicastCheckBox);
 
-            // Per-Process Sender Settings
+
+            // --- Per-Process Sender Radio Button ---
             perProcessSenderRadioButton = new RadioButton
             {
                 Name = "perProcessSenderRadioButton",
                 Text = "Per-Process Sender (Only works with ScreamRouter)",
                 AutoSize = true,
-                Margin = new Padding(0, 0, 0, padding / 4)
+                Margin = new Padding(0, 0, 0, controlSpacing)
             };
             perProcessSenderRadioButton.CheckedChanged += PerProcessSenderRadioButton_CheckedChanged;
             screamPanel.Controls.Add(perProcessSenderRadioButton);
@@ -320,47 +263,20 @@ namespace ScreamRouterDesktop
             bool isCompatible = IsCompatibleWithPerProcessSender();
             perProcessSenderRadioButton.Enabled = isCompatible;
 
-            // Per-Process Sender IP Setting
-            Label perProcessIpLabel = new Label { Text = "Destination IP:", AutoSize = true };
-            perProcessSenderIpTextBox = new TextBox
-            {
-                Name = "perProcessSenderIpTextBox",
-                Width = (int)(200 * scaleFactor),
-                Margin = new Padding(0, 0, padding, padding / 2),
-                Text = "127.0.0.1",
-                Enabled = isCompatible
-            };
-            perProcessSenderIpTextBox.TextChanged += (s, e) => { };
-            FlowLayoutPanel perProcessIpPanel = new FlowLayoutPanel
+            // --- Per-Process Sender IP/Port Panel ---
+            FlowLayoutPanel perProcessSenderDetailsPanel = new FlowLayoutPanel
             {
                 FlowDirection = FlowDirection.LeftToRight,
                 AutoSize = true,
-                WrapContents = false
+                WrapContents = false,
+                Margin = new Padding(padding, 0, 0, controlSpacing) // Indent
             };
-            perProcessIpPanel.Controls.AddRange(new Control[] { perProcessIpLabel, perProcessSenderIpTextBox });
-            screamPanel.Controls.Add(perProcessIpPanel);
-
-            // Per-Process Sender Port Setting
-            Label perProcessPortLabel = new Label { Text = "Destination Port:", AutoSize = true };
-            perProcessSenderPortNumeric = new NumericUpDown
-            {
-                Name = "perProcessSenderPortNumeric",
-                Minimum = 1,
-                Maximum = 65535,
-                Value = 16402,
-                Width = (int)(80 * scaleFactor),
-                Margin = new Padding(0, 0, padding, padding / 2),
-                Enabled = isCompatible
-            };
-            perProcessSenderPortNumeric.ValueChanged += (s, e) => { };
-            FlowLayoutPanel perProcessPortPanel = new FlowLayoutPanel
-            {
-                FlowDirection = FlowDirection.LeftToRight,
-                AutoSize = true,
-                WrapContents = false
-            };
-            perProcessPortPanel.Controls.AddRange(new Control[] { perProcessPortLabel, perProcessSenderPortNumeric });
-            screamPanel.Controls.Add(perProcessPortPanel);
+            Label perProcessIpLabel = new Label { Text = "Destination IP:", AutoSize = true, Margin = new Padding(0, controlSpacing / 2, controlSpacing, 0) };
+            perProcessSenderIpTextBox = new TextBox { Name = "perProcessSenderIpTextBox", Width = (int)(150 * scaleFactor), Margin = new Padding(0, 0, padding, 0), Text = "", Enabled = isCompatible };
+            Label perProcessPortLabel = new Label { Text = "Port:", AutoSize = true, Margin = new Padding(0, controlSpacing / 2, controlSpacing, 0) };
+            perProcessSenderPortNumeric = new NumericUpDown { Name = "perProcessSenderPortNumeric", Minimum = 1, Maximum = 65535, Value = 16402, Width = (int)(70 * scaleFactor), Enabled = isCompatible };
+            perProcessSenderDetailsPanel.Controls.AddRange(new Control[] { perProcessIpLabel, perProcessSenderIpTextBox, perProcessPortLabel, perProcessSenderPortNumeric });
+            screamPanel.Controls.Add(perProcessSenderDetailsPanel);
 
             // Show compatibility warning if needed
             if (!isCompatible)
@@ -370,69 +286,60 @@ namespace ScreamRouterDesktop
                     Text = "Requires Windows 10 build 20348+ or Windows 11",
                     AutoSize = true,
                     ForeColor = Color.Red,
-                    Margin = new Padding(0, 0, 0, padding)
+                    Margin = new Padding(padding, 0, 0, padding)
                 };
                 screamPanel.Controls.Add(perProcessSenderCompatibilityLabel);
             }
+            else
+            {
+                screamPanel.Controls.Add(new Panel { Height = padding, AutoSize = false }); // Spacer
+            }
 
-            // Receiver Settings
+
+            // --- Receiver Settings ---
             receiverEnabledCheckBox = new CheckBox
             {
                 Name = "receiverEnabledCheckBox",
                 Text = "Enable Scream Receiver",
                 AutoSize = true,
-                Margin = new Padding(0, 0, 0, padding / 2)
+                Margin = new Padding(0, padding, 0, controlSpacing)
             };
-            receiverEnabledCheckBox.CheckedChanged += (s, e) => { };
             screamPanel.Controls.Add(receiverEnabledCheckBox);
 
-            Label receiverPortLabel = new Label { Text = "Inbound Port:", AutoSize = true };
-            receiverPortNumeric = new NumericUpDown
-            {
-                Name = "receiverPortNumeric",
-                Minimum = 1,
-                Maximum = 65535,
-                Value = 4010,
-                Width = (int)(80 * scaleFactor),
-                Margin = new Padding(0, 0, padding, padding)
-            };
-            receiverPortNumeric.ValueChanged += (s, e) => { };
+            // --- Receiver Port Panel ---
             FlowLayoutPanel receiverPortPanel = new FlowLayoutPanel
             {
                 FlowDirection = FlowDirection.LeftToRight,
                 AutoSize = true,
-                WrapContents = false
+                WrapContents = false,
+                Margin = new Padding(padding, 0, 0, 0) // Indent
             };
+            Label receiverPortLabel = new Label { Text = "Inbound Port:", AutoSize = true, Margin = new Padding(0, controlSpacing / 2, controlSpacing, 0) };
+            receiverPortNumeric = new NumericUpDown { Name = "receiverPortNumeric", Minimum = 1, Maximum = 65535, Value = 4010, Width = (int)(70 * scaleFactor) };
             receiverPortPanel.Controls.AddRange(new Control[] { receiverPortLabel, receiverPortNumeric });
             screamPanel.Controls.Add(receiverPortPanel);
 
-            screamGroupBox.Controls.Add(screamPanel);
-            mainPanel.Controls.Add(screamGroupBox, 0, 2);
 
-            // Audio Info Section
-            GroupBox audioInfoGroupBox = new GroupBox
-            {
-                Text = "Current Audio Configuration",
-                Dock = DockStyle.Fill,
-                AutoSize = true,
-                Padding = new Padding(padding),
-                Margin = new Padding(0, 0, 0, sectionSpacing)
-            };
+            screamTabPage.Controls.Add(screamPanel);
+
+            // --- Tab Page 3: Audio Configuration Info ---
+            TabPage audioInfoTabPage = new TabPage("Audio Info");
+            settingsTabControl.TabPages.Add(audioInfoTabPage);
 
             FlowLayoutPanel audioInfoPanel = new FlowLayoutPanel
             {
                 FlowDirection = FlowDirection.TopDown,
-                AutoSize = true,
+                AutoSize = true, // Let panel size to content
                 WrapContents = false,
-                Dock = DockStyle.Fill
+                Dock = DockStyle.Fill, // Fill the tab page
+                Padding = new Padding(padding)
             };
 
             Label audioInfoLabel = new Label
             {
                 Text = "The following audio settings will be advertised via mDNS when the receiver is enabled:",
                 AutoSize = true,
-                Font = new Font(this.Font.FontFamily, 9, FontStyle.Regular),
-                Margin = new Padding(0, 0, 0, padding / 2)
+                Margin = new Padding(0, 0, 0, controlSpacing)
             };
             audioInfoPanel.Controls.Add(audioInfoLabel);
 
@@ -442,7 +349,7 @@ namespace ScreamRouterDesktop
                 Name = "bitDepthLabel",
                 Text = "Bit Depth: -- (Windows returns audio in 32-bit regardless of config)",
                 AutoSize = true,
-                Margin = new Padding(0, 0, 0, padding / 4)
+                Margin = new Padding(0, 0, 0, controlSpacing)
             };
             audioInfoPanel.Controls.Add(bitDepthLabel);
 
@@ -451,7 +358,7 @@ namespace ScreamRouterDesktop
                 Name = "sampleRateLabel",
                 Text = "Sample Rate: --",
                 AutoSize = true,
-                Margin = new Padding(0, 0, 0, padding / 4)
+                Margin = new Padding(0, 0, 0, controlSpacing)
             };
             audioInfoPanel.Controls.Add(sampleRateLabel);
 
@@ -460,7 +367,7 @@ namespace ScreamRouterDesktop
                 Name = "channelsLabel",
                 Text = "Channels: --",
                 AutoSize = true,
-                Margin = new Padding(0, 0, 0, padding / 4)
+                Margin = new Padding(0, 0, 0, controlSpacing)
             };
             audioInfoPanel.Controls.Add(channelsLabel);
 
@@ -469,45 +376,38 @@ namespace ScreamRouterDesktop
                 Name = "channelLayoutLabel",
                 Text = "Channel Layout: --",
                 AutoSize = true,
-                Margin = new Padding(0, 0, 0, padding / 4)
+                Margin = new Padding(0, 0, 0, controlSpacing)
             };
             audioInfoPanel.Controls.Add(channelLayoutLabel);
 
-            audioInfoGroupBox.Controls.Add(audioInfoPanel);
-            mainPanel.Controls.Add(audioInfoGroupBox, 0, 3);
+            audioInfoTabPage.Controls.Add(audioInfoPanel);
 
-            // Application Settings Section
-            GroupBox appSettingsGroupBox = new GroupBox
-            {
-                Text = "Application Settings",
-                Dock = DockStyle.Fill,
-                AutoSize = true,
-                Padding = new Padding(padding),
-                Margin = new Padding(0)
-            };
+            // --- Tab Page 4: Application Settings ---
+            TabPage appSettingsTabPage = new TabPage("Application");
+            settingsTabControl.TabPages.Add(appSettingsTabPage);
 
             FlowLayoutPanel appSettingsPanel = new FlowLayoutPanel
             {
                 FlowDirection = FlowDirection.TopDown,
-                AutoSize = true,
+                AutoSize = true, // Let panel size to content
                 WrapContents = false,
-                Dock = DockStyle.Fill
+                Dock = DockStyle.Fill, // Fill the tab page
+                Padding = new Padding(padding)
             };
 
             Label updateLabel = new Label
             {
                 Text = "Update Mode:",
                 AutoSize = true,
-                Font = new Font(this.Font.FontFamily, 9, FontStyle.Regular),
-                Margin = new Padding(0, 0, 0, padding / 2)
+                Margin = new Padding(0, 0, 0, controlSpacing)
             };
             appSettingsPanel.Controls.Add(updateLabel);
 
             updateModeComboBox = new ComboBox
             {
-                Width = (int)(450 * scaleFactor),
+                Width = (int)(450 * scaleFactor), // Keep explicit width scaling
                 DropDownStyle = ComboBoxStyle.DropDownList,
-                Margin = new Padding(0, 0, 0, padding / 2)
+                Margin = new Padding(0, 0, 0, padding)
             };
             updateModeComboBox.Items.AddRange(new string[] {
                 "Do not check for updates",
@@ -523,17 +423,60 @@ namespace ScreamRouterDesktop
             {
                 Text = "Start application when Windows starts",
                 AutoSize = true,
-                Margin = new Padding(0, padding, 0, 0)
+                Margin = new Padding(0, 0, 0, 0)
             };
             startAtBootCheckBox.CheckedChanged += StartAtBootCheckBox_CheckedChanged;
             appSettingsPanel.Controls.Add(startAtBootCheckBox);
 
-            appSettingsGroupBox.Controls.Add(appSettingsPanel);
-            mainPanel.Controls.Add(appSettingsGroupBox, 0, 4);
+            appSettingsTabPage.Controls.Add(appSettingsPanel);
+
+            // Add TabControl to the main panel
+            mainPanel.Controls.Add(settingsTabControl, 0, 0);
+
+            // Buttons Panel (placed below the TabControl)
+            FlowLayoutPanel buttonsPanel = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.LeftToRight,
+                AutoSize = true, // Let panel size itself
+                WrapContents = false,
+                Dock = DockStyle.Bottom, // Dock to bottom
+                Padding = new Padding(0, padding, 0, 0)
+            };
+
+            // Buttons should scale automatically with AutoScaleMode=Dpi and inherited font
+            saveButton = new Button
+            {
+                Text = "Save Configuration",
+                AutoSize = true,
+                Margin = new Padding(0, 0, padding, 0)
+            };
+            saveButton.Click += SaveButton_Click;
+            buttonsPanel.Controls.Add(saveButton);
+
+            openWebInterfaceButton = new Button
+            {
+                Text = "Open Web Interface",
+                AutoSize = true,
+                Margin = new Padding(0, 0, padding, 0)
+            };
+            openWebInterfaceButton.Click += OpenWebInterfaceButton_Click;
+            buttonsPanel.Controls.Add(openWebInterfaceButton);
+
+            pinToNotificationAreaButton = new Button
+            {
+                Text = "Pin to Notification Area",
+                AutoSize = true
+            };
+            pinToNotificationAreaButton.Click += PinToNotificationAreaButton_Click;
+            buttonsPanel.Controls.Add(pinToNotificationAreaButton);
+
+            mainPanel.Controls.Add(buttonsPanel, 0, 1); // Add buttons to the second row
 
             this.Controls.Add(mainPanel);
             InitializeNotifyIcon();
         }
+
+        // Removed SettingsTabControl_SelectedIndexChanged handler
 
         private void UpdateAudioInfo()
         {
@@ -746,13 +689,13 @@ namespace ScreamRouterDesktop
 
             // Save Scream settings
             screamSettings.SenderEnabled = standardSenderRadioButton?.Checked ?? false;
-            screamSettings.SenderIP = senderIpTextBox?.Text ?? "127.0.0.1";
+            screamSettings.SenderIP = senderIpTextBox?.Text ?? "";
             screamSettings.SenderPort = (int)(senderPortNumeric?.Value ?? 16401);
             screamSettings.SenderMulticast = multicastCheckBox?.Checked ?? false;
 
             // Save Per-Process Sender settings
             screamSettings.PerProcessSenderEnabled = perProcessSenderRadioButton?.Checked ?? false;
-            screamSettings.PerProcessSenderIP = perProcessSenderIpTextBox?.Text ?? "127.0.0.1";
+            screamSettings.PerProcessSenderIP = perProcessSenderIpTextBox?.Text ?? "";
             screamSettings.PerProcessSenderPort = (int)(perProcessSenderPortNumeric?.Value ?? 16402);
 
             screamSettings.ReceiverEnabled = receiverEnabledCheckBox?.Checked ?? false;
@@ -1078,4 +1021,4 @@ namespace ScreamRouterDesktop
             Recent
         }
     }
-}
+} 

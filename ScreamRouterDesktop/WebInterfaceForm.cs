@@ -231,6 +231,14 @@ namespace ScreamRouterDesktop
                     CoreWebView2Environment cwv2Environment = await CoreWebView2Environment.CreateAsync(null, userDataFolder, options);
                     await webView.EnsureCoreWebView2Async(cwv2Environment);
 
+                    // Ignore SSL certificate errors
+                    webView.CoreWebView2.ServerCertificateErrorDetected += (sender, args) =>
+                    {
+                        // NOTE: This is insecure and should only be used in controlled environments
+                        // where you trust the source despite certificate errors.
+                        args.Action = CoreWebView2ServerCertificateErrorAction.AlwaysAllow;
+                    };
+
                     // Completely disable all browser UI elements
                     webView.CoreWebView2.Settings.AreDevToolsEnabled = true;
                     webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = true;

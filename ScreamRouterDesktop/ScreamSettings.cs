@@ -138,12 +138,12 @@ namespace ScreamRouterDesktop
 
 
         public bool SenderEnabled { get; set; }
-        public string SenderIP { get; set; } = "127.0.0.1";
+        public string SenderIP { get; set; } = ""; // Initialize to blank instead of 127.0.0.1
         public int SenderPort { get; set; } = 16401;
         public bool SenderMulticast { get; set; }
 
         public bool PerProcessSenderEnabled { get; set; }
-        public string PerProcessSenderIP { get; set; } = "127.0.0.1";
+        public string PerProcessSenderIP { get; set; } = "";
         public int PerProcessSenderPort { get; set; } = 16402;
 
         public bool ReceiverEnabled { get; set; }
@@ -241,11 +241,69 @@ namespace ScreamRouterDesktop
             if (writeKey != null)
             {
                 SenderEnabled = Convert.ToBoolean(writeKey.GetValue("SenderEnabled", false));
-                SenderIP = (string?)key.GetValue("SenderIP", "127.0.0.1") ?? "127.0.0.1";
-                SenderPort = Convert.ToInt32(key.GetValue("SenderPort", 16401));
-                SenderMulticast = Convert.ToBoolean(key.GetValue("SenderMulticast", false));
-                PerProcessSenderEnabled = Convert.ToBoolean(key.GetValue("PerProcessSenderEnabled", false));
-                PerProcessSenderIP = (string?)key.GetValue("PerProcessSenderIP", "127.0.0.1") ?? "127.0.0.1";
+
+                // Load SenderIP: Check registry. Only query mDNS if the key is completely missing.
+                object? senderIpValue = writeKey.GetValue("SenderIP");
+                string? currentSenderIp = senderIpValue?.ToString(); // Convert to string once
+                Logger.Log("ScreamSettings", $"Registry value for SenderIP read as: '{currentSenderIp ?? "null"}'");
+
+                // Explicitly treat null OR empty string from registry as "not set"
+                if (currentSenderIp == null || currentSenderIp == "")
+                {
+                    string logReason = senderIpValue == null ? "not found in registry" : "is empty string";
+                    Logger.Log("ScreamSettings", $"SenderIP {logReason}. Querying mDNS for screamrouter.local...");
+                    IPAddress? resolvedIp = ResolveHostnameViaMdns("screamrouter.local");
+                    if (resolvedIp != null)
+                    {
+                        SenderIP = resolvedIp.ToString();
+                        Logger.Log("ScreamSettings", $"Found screamrouter.local at {SenderIP}. Saving to registry.");
+                        writeKey.SetValue("SenderIP", SenderIP); // Save the discovered IP
+                    }
+                    else
+                    {
+                        SenderIP = ""; // Leave blank if mDNS resolution fails
+                        Logger.Log("ScreamSettings", "Could not resolve screamrouter.local via mDNS. Leaving SenderIP blank.");
+                    }
+                }
+                else // Key exists and has a non-empty, non-null value, load it.
+                {
+                    SenderIP = currentSenderIp; // Value is already known to be non-null and non-empty
+                    Logger.Log("ScreamSettings", $"Loaded non-empty SenderIP directly from registry: {SenderIP}");
+                }
+
+                SenderPort = Convert.ToInt32(writeKey.GetValue("SenderPort", 16401));
+                SenderMulticast = Convert.ToBoolean(writeKey.GetValue("SenderMulticast", false));
+                PerProcessSenderEnabled = Convert.ToBoolean(writeKey.GetValue("PerProcessSenderEnabled", false));
+
+                // Load PerProcessSenderIP: Check registry. Treat null or empty string as unset and try mDNS.
+                object? perProcessSenderIpValue = writeKey.GetValue("PerProcessSenderIP");
+                string? currentPerProcessSenderIp = perProcessSenderIpValue?.ToString();
+                Logger.Log("ScreamSettings", $"Registry value for PerProcessSenderIP read as: '{currentPerProcessSenderIp ?? "null"}'");
+
+                // Explicitly treat null OR empty string from registry as "not set"
+                if (currentPerProcessSenderIp == null || currentPerProcessSenderIp == "")
+                {
+                    string logReason = perProcessSenderIpValue == null ? "not found in registry" : "is empty string";
+                    Logger.Log("ScreamSettings", $"PerProcessSenderIP {logReason}. Querying mDNS for screamrouter.local...");
+                    IPAddress? resolvedIp = ResolveHostnameViaMdns("screamrouter.local"); // Reuse the same lookup
+                    if (resolvedIp != null)
+                    {
+                        PerProcessSenderIP = resolvedIp.ToString();
+                        Logger.Log("ScreamSettings", $"Found screamrouter.local at {PerProcessSenderIP}. Saving to registry for PerProcessSenderIP.");
+                        writeKey.SetValue("PerProcessSenderIP", PerProcessSenderIP); // Save the discovered IP
+                    }
+                    else
+                    {
+                        PerProcessSenderIP = ""; // Leave blank if mDNS resolution fails
+                        Logger.Log("ScreamSettings", "Could not resolve screamrouter.local via mDNS. Leaving PerProcessSenderIP blank.");
+                    }
+                }
+                else // Key exists and has a non-empty, non-null value, load it.
+                {
+                    PerProcessSenderIP = currentPerProcessSenderIp; // Value is already known to be non-null and non-empty
+                    Logger.Log("ScreamSettings", $"Loaded non-empty PerProcessSenderIP directly from registry: {PerProcessSenderIP}");
+                }
+
                 PerProcessSenderPort = Convert.ToInt32(writeKey.GetValue("PerProcessSenderPort", 16402));
                 ReceiverEnabled = Convert.ToBoolean(writeKey.GetValue("ReceiverEnabled", false));
                 ReceiverPort = Convert.ToInt32(writeKey.GetValue("ReceiverPort", 4010));
@@ -495,7 +553,7 @@ namespace ScreamRouterDesktop
                     Logger.Log("ScreamSettings", $"Reverse lookup result: {hostname}");
 
                     // Step 4: Construct the URL
-                    string url = $"https://{hostname}/site/DesktopMenu";
+                    string url = $"https://{ipAddress}/site/DesktopMenu";
                     Logger.Log("ScreamSettings", $"Constructed WebInterfaceUrl: {url}");
 
                     return url;

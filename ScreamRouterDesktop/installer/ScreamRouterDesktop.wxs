@@ -47,8 +47,8 @@
     <StandardDirectory Id="DesktopFolder" />
 
     <!-- UI Customization -->
-    <!-- UI Customization - Using Mondo for a more standard flow -->
-    <ui:WixUI Id="WixUI_Mondo" />
+    <!-- UI Customization - Using InstallDir for a simpler flow without setup type selection -->
+    <ui:WixUI Id="WixUI_InstallDir" />
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
     <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
     <!-- Commented out bitmap variables as files/directory don't exist -->

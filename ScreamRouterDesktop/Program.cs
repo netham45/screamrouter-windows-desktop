@@ -1,5 +1,5 @@
 using System;
-using System.Windows.Forms;
+// using System.Windows.Forms; // No longer needed for WPF startup
 using System.Threading;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
@@ -13,76 +13,66 @@ namespace ScreamRouterDesktop
         [return: MarshalAs(UnmanagedType.Bool)]
         static extern bool SetForegroundWindow(IntPtr hWnd);
 
-        [STAThread]
-        static void Main(string[] args)
-        {
-            Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
+        // STAThread attribute is typically applied to the Main method of a WPF application
+        // if it's defined explicitly, or handled by the framework when using App.xaml.
+        // [STAThread] // No longer needed as Main is removed
+        // static void Main(string[] args) // Removed Main method - App.xaml is the entry point
+        // {
+            // WinForms specific initialization - No longer needed for WPF startup via App.xaml
+            // Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
+            // Application.EnableVisualStyles();
+            // Application.SetCompatibleTextRenderingDefault(false);
 
+            // Single instance check and application run logic is now handled in App.xaml.cs
+            /*
             using (Mutex mutex = new Mutex(true, "ScreamRouterDesktopSingleInstance", out bool createdNew))
             {
                 if (createdNew)
                 {
-                    MainForm mainForm = new MainForm();
-                    HandleArguments(args, mainForm);
-                    
-                    // Initialize update manager and check for updates
-                    var updateManager = new UpdateManager();
-                    Debug.WriteLine("[Program] Initializing update check");
-                    
-                    // Handle update check in a way that we can catch errors
-                    Task.Run(async () => {
-                        try
-                        {
-                            Debug.WriteLine("[Program] Starting update check");
-                            await updateManager.CheckForUpdates();
-                            Debug.WriteLine("[Program] Update check completed successfully");
-                        }
-                        catch (Exception ex)
-                        {
-                            Debug.WriteLine($"[Program] Error during update check: {ex}");
-                            // Don't show error to user - just log it since this is startup
-                        }
-                    });
-                    
-                    Application.Run(mainForm);
+                    // Old WinForms startup:
+                    // MainForm mainForm = new MainForm();
+                    // HandleArguments(args, mainForm); // Argument handling moved to App.xaml.cs
+                    // ... (Update check moved to App.xaml.cs) ...
+                    // Application.Run(mainForm);
+
+                    // WPF startup is handled by App.xaml / App.xaml.cs
+                    // If you need to explicitly start the App object here (less common):
+                    // var app = new App();
+                    // app.InitializeComponent();
+                    // app.Run();
                 }
                 else
                 {
+                    // Logic to activate existing instance moved to App.xaml.cs
                     IntPtr hWnd = FindWindow(null, "ScreamRouter Desktop Configuration");
                     if (hWnd != IntPtr.Zero)
                     {
                         SetForegroundWindow(hWnd);
-                        if (args.Length > 0)
-                        {
-                            if (args[0] == "-settings")
-                            {
-                                SendMessage(hWnd, WM_SHOWSETTINGS, IntPtr.Zero, IntPtr.Zero);
-                                return;
-                            }
-                        }
-                        SendMessage(hWnd, WM_SHOWWEBINTERFACE, IntPtr.Zero, IntPtr.Zero);
+                        // Forwarding arguments via SendMessage might still be needed
+                        // if implementing that feature fully in MainWindow.
+                        // ...
                     }
                 }
             }
-        }
+            */
 
+             // Minimal Main for WPF: Instantiate and run the App object.
+             // This ensures the App.xaml/App.xaml.cs lifecycle starts correctly.
+             // var app = new App();
+             // app.InitializeComponent(); // Loads App.xaml
+             // app.Run(); // Starts the application lifecycle (including Application_Startup)
+        // }
+
+        // HandleArguments is now in App.xaml.cs
+        /*
         private static void HandleArguments(string[] args, MainForm mainForm)
         {
-            if (args.Length > 0)
-            {
-                if (args[0] == "-openwebinterface")
-                {
-                    mainForm.ToggleWebInterface();
-                }
-                else if (args[0] == "-settings")
-                {
-                    mainForm.ShowSettings();
-                }
-            }
+            // ... old implementation ...
         }
+        */
 
+        // P/Invoke methods might still be useful, but are duplicated in App.xaml.cs
+        // Consider creating a shared utility class if needed elsewhere.
         [DllImport("user32.dll")]
         static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
 

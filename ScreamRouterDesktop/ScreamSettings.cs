@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
 using System.IO;
-using System.Windows.Forms;
+using System.Windows; // Changed from System.Windows.Forms
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -172,6 +172,7 @@ namespace ScreamRouterDesktop
         // Private field to hold the value temporarily until Save() is called
         private bool _startAtBootValue;
 
+
         // Method to get the current audio settings from ZeroconfService
         public ZeroconfService.AudioSettings? GetCurrentAudioSettings()
         {
@@ -206,7 +207,12 @@ namespace ScreamRouterDesktop
         private void SetStartAtBoot(bool enable)
         {
             Logger.Log("ScreamSettings", $"Setting start at boot to {enable}");
-            string appPath = Application.ExecutablePath;
+            string? appPath = Process.GetCurrentProcess().MainModule?.FileName; // WPF way to get path
+            if (string.IsNullOrEmpty(appPath))
+            {
+                Logger.Log("ScreamSettings", "Error: Could not determine application executable path for startup registry.");
+                return; // Cannot proceed without the path
+            }
             using var key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true);
 
             if (key != null)
@@ -386,13 +392,13 @@ namespace ScreamRouterDesktop
         {
             if (!HasStartAtBootBeenPrompted())
             {
-                DialogResult result = MessageBox.Show(
+                MessageBoxResult result = System.Windows.MessageBox.Show( // Use WPF MessageBox
                     "Would you like ScreamRouter Desktop to start automatically when you log in?",
                     "Start at Boot",
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Question);
+                    MessageBoxButton.YesNo, // WPF Button enum
+                    MessageBoxImage.Question); // WPF Image enum
 
-                _startAtBootValue = result == DialogResult.Yes;
+                _startAtBootValue = result == MessageBoxResult.Yes; // WPF Result enum
                 SetStartAtBootPrompted();
                 Save();
             }

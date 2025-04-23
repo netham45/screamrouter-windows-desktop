@@ -8,24 +8,27 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
-    <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF> 
+    <UseWindowsForms>true</UseWindowsForms> <!-- Added back to allow WinForms interop -->
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>Properties\Resources\app.ico</ApplicationIcon>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Content Include="Properties\Resources\app.ico" />
-  </ItemGroup>
+   <!-- Removed explicit ApplicationDefinition ItemGroup; SDK should handle App.xaml automatically -->
 
-  <ItemGroup>
-    <EmbeddedResource Include="Properties\Resources\app.ico">
-      <LogicalName>ScreamRouterDesktop.app.ico</LogicalName>
-    </EmbeddedResource>
-  </ItemGroup>
+   <ItemGroup>
+     <!-- Removed Content and EmbeddedResource for app.ico -->
+     <!-- <Content Include="Properties\Resources\app.ico" /> -->
+     <!-- <EmbeddedResource Include="Properties\Resources\app.ico"> -->
+       <!-- <LogicalName>ScreamRouterDesktop.app.ico</LogicalName> -->
+     <!-- </EmbeddedResource> -->
+     <Resource Include="Properties\Resources\app.ico" /> <!-- Added standard WPF Resource entry -->
+   </ItemGroup>
 
-  <ItemGroup>
+   <ItemGroup>
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.1518.46" />
     <PackageReference Include="Makaretu.Dns.Multicast" Version="0.27.0" />
+    <PackageReference Include="System.Drawing.Common" Version="9.0.4" />
   </ItemGroup>
 
 </Project>

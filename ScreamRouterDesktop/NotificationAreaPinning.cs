@@ -1,7 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Windows.Forms;
+using WinForms = System.Windows.Forms; // Alias for WinForms types
 
 namespace ScreamRouterDesktop
 {
@@ -50,53 +50,53 @@ namespace ScreamRouterDesktop
                         UseShellExecute = true
                     });
                 }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Unable to open notification area settings: {ex.Message}\n\n" +
-                        "Please manually open notification area settings by right-clicking on the taskbar, " +
-                        "selecting 'Taskbar settings' and then configuring notification icons.",
-                        "Error Opening Settings", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
+                 catch (Exception ex)
+                 {
+                     WinForms.MessageBox.Show($"Unable to open notification area settings: {ex.Message}\n\n" + // Use alias
+                         "Please manually open notification area settings by right-clicking on the taskbar, " +
+                         "selecting 'Taskbar settings' and then configuring notification icons.",
+                         "Error Opening Settings", WinForms.MessageBoxButtons.OK, WinForms.MessageBoxIcon.Error); // Use alias
+                 }
+             }
         }
 
-        /// <summary>
-        /// Shows a balloon tip instructing the user how to pin the notification area icon
-        /// </summary>
-        /// <param name="notifyIcon">The NotifyIcon to show instructions for</param>
-        public static void ShowPinInstructions(NotifyIcon notifyIcon)
-        {
-            if (notifyIcon == null) return;
-            
+         /// <summary>
+         /// Shows a balloon tip instructing the user how to pin the notification area icon
+         /// </summary>
+         /// <param name="notifyIcon">The NotifyIcon to show instructions for</param>
+         public static void ShowPinInstructions(WinForms.NotifyIcon notifyIcon) // Use alias
+         {
+             if (notifyIcon == null) return;
+
             notifyIcon.BalloonTipTitle = "Pin ScreamRouter to Notification Area";
             notifyIcon.BalloonTipText = "To keep this icon always visible:\n" +
-                "1. Click the up arrow (^) in the notification area to expand it, the (^) switches to a (v)\n" +
-                "2. Drag the ScreamRouter Desktop icon to the (v) next to the notification area\n" +
-                "3. Or customize notification icons in taskbar settings";
-                
-            notifyIcon.BalloonTipIcon = ToolTipIcon.Info;
-            notifyIcon.ShowBalloonTip(15000); // Show for 15 seconds
-        }
+                 "1. Click the up arrow (^) in the notification area to expand it, the (^) switches to a (v)\n" +
+                 "2. Drag the ScreamRouter Desktop icon to the (v) next to the notification area\n" +
+                 "3. Or customize notification icons in taskbar settings";
 
-        /// <summary>
-        /// Displays a modal dialog with instructions for pinning the notification icon
-        /// </summary>
-        public static void ShowPinInstructionsDialog()
-        {
-            DialogResult result = MessageBox.Show(
-                "Would you like to keep the ScreamRouter icon visible in the notification area?\n\n" +
-                "To pin the icon:\n" +
-                "1. Click the up arrow (^) in the notification area to expand it, the (^) switches to a (v)\n" +
-                "2. Drag the ScreamRouter Desktop icon to the (v) next to the notification area\n" +
-                "- Or -\n" +
-                "Click 'Yes' to open notification area settings where you can customize which icons appear",
-                "Pin to Notification Area",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Question);
+             notifyIcon.BalloonTipIcon = WinForms.ToolTipIcon.Info; // Use alias
+             notifyIcon.ShowBalloonTip(15000); // Show for 15 seconds
+         }
 
-            if (result == DialogResult.Yes)
-            {
-                OpenNotificationAreaSettings();
+         /// <summary>
+         /// Displays a modal dialog with instructions for pinning the notification icon
+         /// </summary>
+         public static void ShowPinInstructionsDialog()
+         {
+             WinForms.DialogResult result = WinForms.MessageBox.Show( // Use alias
+                 "Would you like to keep the ScreamRouter icon visible in the notification area?\n\n" +
+                 "To pin the icon:\n" +
+                 "1. Click the up arrow (^) in the notification area to expand it, the (^) switches to a (v)\n" +
+                 "2. Drag the ScreamRouter Desktop icon to the (v) next to the notification area\n" +
+                 "- Or -\n" +
+                 "Click 'Yes' to open notification area settings where you can customize which icons appear",
+                 "Pin to Notification Area",
+                 WinForms.MessageBoxButtons.YesNo, // Use alias
+                 WinForms.MessageBoxIcon.Question); // Use alias
+
+             if (result == WinForms.DialogResult.Yes) // Use alias
+             {
+                 OpenNotificationAreaSettings();
             }
         }
     }

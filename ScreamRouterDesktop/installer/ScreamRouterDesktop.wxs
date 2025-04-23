@@ -105,6 +105,12 @@
         <File Id="ScreamReceiverEXE" Source="ScreamReceiver.exe" KeyPath="yes" />
       </Component>
 
+      <!-- ScreamPerProcessSender executable -->
+      <Component Id="ScreamPerProcessSenderExecutable" Guid="deadbeef-0c4b-11f0-8ebb-000f5326d481"> <!-- NOTE: Using a placeholder GUID, replace if needed -->
+        <!-- Assuming path relative to project root is correct based on build script copy step -->
+        <File Id="ScreamPerProcessSenderEXE" Source="ScreamPerProcessSender.exe" KeyPath="yes" />
+      </Component>
+
       <!-- App config and DLL files -->
       <Component Id="CoreFilesComponent" Guid="6721899a-0c4b-11f0-8881-000f5326d481">
         <!-- Corrected Source paths relative to WXS file -->

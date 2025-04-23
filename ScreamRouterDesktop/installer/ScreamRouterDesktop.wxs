@@ -33,6 +33,9 @@
           <Directory Id="WinArm64Dir" Name="win-arm64">
             <Directory Id="WinArm64NativeDir" Name="native" />
           </Directory>
+          <Directory Id="WinDir" Name="win">
+            <Directory Id="WinLibDir" Name="lib" />
+          </Directory>
         </Directory>
       </Directory>
     </StandardDirectory>
@@ -70,7 +73,8 @@
     <!-- We need to create a separate Feature for the autostart functionality -->
     <!-- Removed AutoStartFeature as the component is now conditional -->
 
-    <util:CloseApplication Id="CloseScreamRouterDesktop" Target="ScreamRouterDesktop.exe" CloseMessage="yes" RebootPrompt="no"></util:CloseApplication>
+    <!-- Custom action to forcefully terminate the application before install -->
+    <CustomAction Id="ForceCloseApp" Directory="INSTALLFOLDER" ExeCommand="taskkill /F /IM ScreamRouterDesktop.exe" Execute="deferred" Impersonate="no" Return="ignore" />
 
     <!-- Custom action to launch application after install, if checkbox was selected -->
     <!-- Corrected: Removed invalid Condition and Return attributes -->
@@ -80,6 +84,8 @@
                   Execute="immediate" />
 
     <InstallExecuteSequence>
+      <!-- Force close the application before installing files -->
+      <Custom Action="ForceCloseApp" Before="InstallFiles">Installed</Custom>
       <!-- Restoring scheduling for LaunchAppNow -->
       <Custom Action="LaunchAppNow" After="InstallFinalize" />
     </InstallExecuteSequence>
@@ -131,6 +137,13 @@
         <File Id="SimpleBaseDLL" Source="SimpleBase.dll" />
       </Component>
     </ComponentGroup>
+  </Fragment>
+
+  <!-- Win32SystemEvents Loader Component -->
+  <Fragment>
+    <Component Id="Win32SystemEventsComp" Directory="WinLibDir" Guid="677f39c8-0c4b-11f0-b0a3-000f5326d481">
+      <File Id="Win32SystemEvents" Source="runtimes\win\lib\net8.0\Microsoft.Win32.SystemEvents.dll" KeyPath="yes" />
+    </Component>
   </Fragment>
 
   <!-- WebView2 Loader Components -->

@@ -235,6 +235,7 @@ namespace ScreamRouterDesktop
         {
             Logger.Log("ScreamSettings", "Loading settings from registry");
             bool needsSave = false; // Flag to check if we need to save after loading
+            bool settingsChangedDuringLoad = false; // Flag to track if mDNS discovery changed settings
             using var key = Registry.CurrentUser.OpenSubKey(RegistryPath, true); // Open with write access if needed
 
             RegistryKey? writeKey = key; // Use the opened key if possible
@@ -264,6 +265,7 @@ namespace ScreamRouterDesktop
                         SenderIP = resolvedIp.ToString();
                         Logger.Log("ScreamSettings", $"Found screamrouter.local at {SenderIP}. Saving to registry.");
                         writeKey.SetValue("SenderIP", SenderIP); // Save the discovered IP
+                        settingsChangedDuringLoad = true; // Mark settings as changed
                     }
                     else
                     {
@@ -297,6 +299,7 @@ namespace ScreamRouterDesktop
                         PerProcessSenderIP = resolvedIp.ToString();
                         Logger.Log("ScreamSettings", $"Found screamrouter.local at {PerProcessSenderIP}. Saving to registry for PerProcessSenderIP.");
                         writeKey.SetValue("PerProcessSenderIP", PerProcessSenderIP); // Save the discovered IP
+                        settingsChangedDuringLoad = true; // Mark settings as changed
                     }
                     else
                     {
@@ -325,6 +328,7 @@ namespace ScreamRouterDesktop
                         // Save the discovered URL
                         writeKey.SetValue("WebInterfaceUrl", WebInterfaceUrl);
                         Logger.Log("ScreamSettings", $"Discovered and saved WebInterfaceUrl: {WebInterfaceUrl}");
+                        // Note: WebInterfaceUrl change doesn't require process restart, so not setting settingsChangedDuringLoad here.
                     }
                 }
                 else
@@ -371,6 +375,8 @@ namespace ScreamRouterDesktop
 
             // Pass the ReceiverID to the services
             zeroconfService?.SetReceiverID(ReceiverID);
+
+            RestartProcesses();
         }
 
         // Check if the start at boot option has been prompted before

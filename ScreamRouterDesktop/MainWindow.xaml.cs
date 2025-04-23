@@ -330,12 +330,8 @@ namespace ScreamRouterDesktop
 
         protected override void OnClosing(CancelEventArgs e)
         {
-            // Implement close-to-tray behavior
-            e.Cancel = true; // Prevent window from closing
-            this.WindowState = WindowState.Minimized;
-            this.ShowInTaskbar = false;
-            // Optionally show a notification from the tray icon
-            // notifyIcon?.ShowBalloonTip(1000, "ScreamRouter Desktop", "Running in the background.", ToolTipIcon.Info);
+            e.Cancel = true;
+            base.Hide();
             base.OnClosing(e);
         }
 

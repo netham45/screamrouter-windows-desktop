@@ -85,7 +85,7 @@
 
     <InstallExecuteSequence>
       <!-- Force close the application before installing files -->
-      <Custom Action="ForceCloseApp" Before="InstallFiles">Installed</Custom>
+      <Custom Action="ForceCloseApp" Before="InstallFiles" />
       <!-- Restoring scheduling for LaunchAppNow -->
       <Custom Action="LaunchAppNow" After="InstallFinalize" />
     </InstallExecuteSequence>

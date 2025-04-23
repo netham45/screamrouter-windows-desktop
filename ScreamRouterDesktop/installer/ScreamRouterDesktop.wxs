@@ -116,6 +116,13 @@
         <File Id="WebView2WpfDLL" Source="Microsoft.Web.WebView2.Wpf.dll" />
         <File Id="MakaretuDnsDLL" Source="Makaretu.Dns.dll" />
         <File Id="MakaretuDnsMulticastDLL" Source="Makaretu.Dns.Multicast.dll" />
+        <File Id="SystemEventsDLL" Source="Microsoft.Win32.SystemEvents.dll" />
+        <File Id="CommonLoggingDLL" Source="Common.Logging.dll" />
+        <File Id="CommonLoggingCoreDLL" Source="Common.Logging.Core.dll" />
+        <File Id="SystemDrawingCommonDLL" Source="System.Drawing.Common.dll" />
+        <File Id="SystemNetIPNetworkDLL" Source="System.Net.IPNetwork.dll" />
+        <File Id="SystemPrivateWindowsCoreDLL" Source="System.Private.Windows.Core.dll" />
+        <File Id="SimpleBaseDLL" Source="SimpleBase.dll" />
       </Component>
     </ComponentGroup>
   </Fragment>
